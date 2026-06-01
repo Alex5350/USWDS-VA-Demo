@@ -1,0 +1,29 @@
+{
+  "name": "va-oig-fwa-risk-triage-client",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.3.10",
+  "scripts": {
+    "dev": "next dev",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@uswds/uswds": "^3.13.0",
+    "next": "^16.2.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "recharts": "^3.8.1",
+    "sass": "^1.100.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.6",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,6 @@
+@VAOIG.FwaRiskTriage.Api_HostAddress = http://localhost:5210
+
+GET {{VAOIG.FwaRiskTriage.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

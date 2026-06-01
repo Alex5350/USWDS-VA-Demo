@@ -1,0 +1,52 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+src/client/.env.local
+src/client/.env.*.local
+
+# .NET
+bin/
+obj/
+TestResults/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.nupkg
+coverage/
+coverage.cobertura.xml
+
+# Frontend / Bun / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+bunfig.toml
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker and local data
+docker-data/
+*.bak
+*.bacpac
+
+# Logs
+*.log
+logs/
+.playwright-cli/

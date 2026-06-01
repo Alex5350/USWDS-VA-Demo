@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore backend
+        run: dotnet restore src/server/VAOIG.FwaRiskTriage.sln
+
+      - name: Build backend
+        run: dotnet build src/server/VAOIG.FwaRiskTriage.sln --configuration Release --no-restore
+
+      - name: Test backend
+        run: dotnet test src/server/VAOIG.FwaRiskTriage.sln --configuration Release --no-build
+
+      - name: Set up Bun
+        if: hashFiles('src/client/package.json') != ''
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install frontend dependencies
+        if: hashFiles('src/client/package.json') != ''
+        working-directory: src/client
+        run: bun install --frozen-lockfile
+
+      - name: Lint frontend
+        if: hashFiles('src/client/package.json') != ''
+        working-directory: src/client
+        run: bun run lint
+
+      - name: Type check frontend
+        if: hashFiles('src/client/package.json') != ''
+        working-directory: src/client
+        run: bun run typecheck
+
+      - name: Build frontend
+        if: hashFiles('src/client/package.json') != ''
+        working-directory: src/client
+        run: bun run build
