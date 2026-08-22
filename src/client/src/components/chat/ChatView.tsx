@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ChatComposer } from "@/components/chat/ChatComposer";
+import { CaseAssistantPromptInput } from "@/components/chat/CaseAssistantPromptInput";
 import { ChatContextPanel } from "@/components/chat/ChatContextPanel";
 import { ChatHistoryPanel } from "@/components/chat/ChatHistoryPanel";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
@@ -35,6 +35,7 @@ import {
   getGeneratedCaseAssistantSuggestions,
   getRandomCaseAssistantSuggestions
 } from "@/lib/chat-suggestions";
+import type { CaseAssistantPromptInputMessage } from "@/lib/case-assistant-prompt-input";
 import { useDemoUser } from "@/lib/demo-auth";
 
 type ChatViewProps =
@@ -317,8 +318,8 @@ export function ChatView(props: ChatViewProps) {
   ]);
 
   const handleSubmit = useCallback(
-    async (messageText: string) => {
-      const trimmedMessage = messageText.trim();
+    async (message: CaseAssistantPromptInputMessage) => {
+      const trimmedMessage = message.text.trim();
 
       if (!trimmedMessage || !canViewRiskQueue) {
         return;
@@ -431,7 +432,7 @@ export function ChatView(props: ChatViewProps) {
           </div>
 
           <ChatMessageList messages={messages} status={status} />
-          <ChatComposer
+          <CaseAssistantPromptInput
             allowWebSearch={allowWebSearch}
             canStop={isChatBusy}
             disabled={isLoading || Boolean(loadError)}
