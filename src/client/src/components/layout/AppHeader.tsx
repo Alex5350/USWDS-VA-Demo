@@ -16,10 +16,10 @@ export function AppHeader() {
         <Link className="oig-brand" href="/" aria-label="VA OIG FWA Risk Triage home">
           <Image
             className="oig-brand__logo"
-            src="/brand/va-header-logo.png"
+            src="/brand/va-oig-lockup-mark.png"
             alt="VA logo and seal"
-            width={135}
-            height={57}
+            width={270}
+            height={114}
           />
           <span className="oig-brand__text">
             <span className="oig-brand__department">U.S. Department of Veterans Affairs</span>
