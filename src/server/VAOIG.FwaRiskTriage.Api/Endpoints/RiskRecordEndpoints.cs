@@ -10,10 +10,10 @@ public static class RiskRecordEndpoints
 {
     public static IEndpointRouteBuilder MapRiskRecordEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/risk-records").WithTags("Risk Records");
+        var group = app.MapGroup("/api/risk-records").WithTags("Legacy Risk Records");
 
         group.MapPost("/", async (
-                CreateRiskRecordRequest request,
+                CreateCaseRecordRequest request,
                 ClaimsPrincipal user,
                 ICaseRepository repository,
                 IAuditRepository auditRepository,
@@ -32,13 +32,13 @@ public static class RiskRecordEndpoints
                 try
                 {
                     var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
-                    var response = await repository.CreateRiskRecordAsync(request, actor, clock.UtcNow, cancellationToken);
+                    var response = await repository.CreateCaseRecordAsync(request, actor, clock.UtcNow, cancellationToken);
                     await auditRepository.RecordAsync(
                         actor,
-                        "RiskRecordCreated",
+                        "CaseRecordCreated",
                         "CaseFile",
                         response.CaseId.ToString(),
-                        $"Created manual triage review candidate for provider {request.ProviderId}.",
+                        $"Created manual triage case record for provider {request.ProviderId} through the legacy risk-record endpoint.",
                         clock.UtcNow,
                         cancellationToken);
 
@@ -49,7 +49,7 @@ public static class RiskRecordEndpoints
                     return Results.BadRequest(ex.Message);
                 }
             })
-            .RequireAuthorization(Policies.CanCreateRiskRecord);
+            .RequireAuthorization(Policies.CanCreateCaseRecord);
 
         return app;
     }

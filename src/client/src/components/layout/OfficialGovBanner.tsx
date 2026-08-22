@@ -10,7 +10,7 @@ export function OfficialGovBanner() {
     <section className="official-banner" aria-label="Official government website">
       <div className="official-banner__header">
         <div className="official-banner__inner">
-          <span className="official-banner__flag" aria-hidden="true" />
+          <UsFlagIcon />
           <span className="official-banner__text">An official website of the United States government</span>
           <button
             aria-controls={contentId}
@@ -48,6 +48,27 @@ export function OfficialGovBanner() {
         </div>
       </div>
     </section>
+  );
+}
+
+function UsFlagIcon() {
+  return (
+    <svg
+      className="official-banner__flag"
+      aria-hidden="true"
+      focusable="false"
+      role="img"
+      viewBox="0 0 64 44"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path fill="#ffffff" d="M0 0h64v44H0z" />
+      <path fill="#da3e1f" d="M0 0h64v4H0zm0 40h64v4H0zm0-8h64v4H0zm0-8h64v4H0zm0-8h64v4H0zm0-8h64v4H0z" />
+      <path fill="#1e33b1" d="M0 0h32v28H0z" />
+      <path
+        fill="#ffffff"
+        d="M8 12h4v4H8zm16 0h4v4h-4zm-8 0h4v4h-4zm4-8h4v4h-4zm-8 0h4v4h-4zM4 20h4v4H4zm16 0h4v4h-4zm-8 0h4v4h-4zM4 4h4v4H4z"
+      />
+    </svg>
   );
 }
 

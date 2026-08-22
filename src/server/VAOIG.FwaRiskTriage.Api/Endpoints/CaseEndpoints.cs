@@ -12,12 +12,55 @@ public static class CaseEndpoints
     {
         var group = app.MapGroup("/api/cases").WithTags("Cases");
 
+        group.MapPost("/", async (
+                CreateCaseRecordRequest request,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                if (request.ProviderId <= 0
+                    || string.IsNullOrWhiteSpace(request.StateCode)
+                    || request.ProcedureCodeId <= 0
+                    || request.PaidAmount <= 0
+                    || request.RiskRuleIds.Count == 0)
+                {
+                    return Results.BadRequest("Provider, procedure, paid amount, state, and at least one risk indicator are required.");
+                }
+
+                try
+                {
+                    var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                    var response = await repository.CreateCaseRecordAsync(request, actor, clock.UtcNow, cancellationToken);
+                    await auditRepository.RecordAsync(
+                        actor,
+                        "CaseRecordCreated",
+                        "CaseFile",
+                        response.CaseId.ToString(),
+                        $"Created manual triage case record for provider {request.ProviderId}.",
+                        clock.UtcNow,
+                        cancellationToken);
+
+                    return Results.Created($"/api/cases/{response.CaseId}", response);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(ex.Message);
+                }
+            })
+            .RequireAuthorization(Policies.CanCreateCaseRecord);
+
         group.MapGet("/{caseId:int}", async (int caseId, ICaseRepository repository, CancellationToken cancellationToken) =>
             {
                 var detail = await repository.GetCaseDetailAsync(caseId, cancellationToken);
                 return detail is null ? Results.NotFound() : Results.Ok(detail);
             })
             .RequireAuthorization(Policies.CanViewCaseDetail);
+
+        group.MapGet("/deleted", async (ICaseRepository repository, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await repository.GetDeletedCaseRecordsAsync(cancellationToken)))
+            .RequireAuthorization(Policies.CanDeleteCase);
 
         group.MapPost("/{caseId:int}/notes", async (
                 int caseId,
@@ -33,6 +76,120 @@ public static class CaseEndpoints
                 return Results.Created($"/api/cases/{caseId}", note);
             })
             .RequireAuthorization(Policies.CanAddCaseNote);
+
+        group.MapPut("/{caseId:int}", async (
+                int caseId,
+                UpdateCaseRecordRequest request,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                var updated = await repository.UpdateCaseRecordAsync(caseId, request, cancellationToken);
+                if (updated is null)
+                {
+                    return Results.NotFound();
+                }
+
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                await auditRepository.RecordAsync(
+                    actor,
+                    "CaseRecordUpdated",
+                    "CaseFile",
+                    caseId.ToString(),
+                    $"Updated editable case and claim fields for case {caseId}.",
+                    clock.UtcNow,
+                    cancellationToken);
+
+                return Results.Ok(updated);
+            })
+            .RequireAuthorization(Policies.CanEditCase);
+
+        group.MapPost("/{caseId:int}/delete", async (
+                int caseId,
+                DeleteCaseRecordRequest request,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                var deleted = await repository.SoftDeleteCaseRecordAsync(caseId, actor, clock.UtcNow, request.Reason, cancellationToken);
+                if (!deleted)
+                {
+                    return Results.NotFound();
+                }
+
+                await auditRepository.RecordAsync(
+                    actor,
+                    "CaseRecordSoftDeleted",
+                    "CaseFile",
+                    caseId.ToString(),
+                    $"Soft-deleted case {caseId}. Reason: {NormalizeAuditReason(request.Reason)}",
+                    clock.UtcNow,
+                    cancellationToken);
+
+                return Results.NoContent();
+            })
+            .RequireAuthorization(Policies.CanDeleteCase);
+
+        group.MapDelete("/{caseId:int}", async (
+                int caseId,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                var deleted = await repository.SoftDeleteCaseRecordAsync(caseId, actor, clock.UtcNow, null, cancellationToken);
+                if (!deleted)
+                {
+                    return Results.NotFound();
+                }
+
+                await auditRepository.RecordAsync(
+                    actor,
+                    "CaseRecordSoftDeleted",
+                    "CaseFile",
+                    caseId.ToString(),
+                    $"Soft-deleted case {caseId}.",
+                    clock.UtcNow,
+                    cancellationToken);
+
+                return Results.NoContent();
+            })
+            .RequireAuthorization(Policies.CanDeleteCase);
+
+        group.MapPut("/{caseId:int}/restore", async (
+                int caseId,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                var restored = await repository.RestoreCaseRecordAsync(caseId, cancellationToken);
+                if (!restored)
+                {
+                    return Results.NotFound();
+                }
+
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                await auditRepository.RecordAsync(
+                    actor,
+                    "CaseRecordRestored",
+                    "CaseFile",
+                    caseId.ToString(),
+                    $"Restored soft-deleted case {caseId}.",
+                    clock.UtcNow,
+                    cancellationToken);
+
+                return Results.NoContent();
+            })
+            .RequireAuthorization(Policies.CanDeleteCase);
 
         group.MapPut("/{caseId:int}/status", async (
                 int caseId,
@@ -56,7 +213,7 @@ public static class CaseEndpoints
                 {
                     var canEscalate = user.Claims.Any(claim =>
                         claim.Type == "permission"
-                        && string.Equals(claim.Value, Policies.CanEscalateRiskRecord, StringComparison.OrdinalIgnoreCase));
+                        && string.Equals(claim.Value, Policies.CanEscalateCase, StringComparison.OrdinalIgnoreCase));
                     if (!canEscalate)
                     {
                         return Results.Forbid();
@@ -95,7 +252,7 @@ public static class CaseEndpoints
                 var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
                 await auditRepository.RecordAsync(
                     actor,
-                    "RiskRecordEscalated",
+                    "CaseRecordEscalated",
                     "CaseFile",
                     caseId.ToString(),
                     $"Escalated case {caseId} for supervisory review.",
@@ -104,8 +261,11 @@ public static class CaseEndpoints
 
                 return Results.NoContent();
             })
-            .RequireAuthorization(Policies.CanEscalateRiskRecord);
+            .RequireAuthorization(Policies.CanEscalateCase);
 
         return app;
     }
+
+    private static string NormalizeAuditReason(string? reason) =>
+        string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason.Trim();
 }

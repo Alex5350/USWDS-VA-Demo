@@ -28,8 +28,22 @@ BEGIN
         RiskLevel nvarchar(50) NOT NULL,
         EstimatedQuestionedCost decimal(18,2) NOT NULL,
         CreatedDate datetime2 NOT NULL CONSTRAINT DF_CaseFiles_CreatedDate DEFAULT SYSUTCDATETIME(),
-        ClosedDate datetime2 NULL
+        ClosedDate datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_CaseFiles_IsDeleted DEFAULT 0,
+        DeletedAt datetime2 NULL,
+        DeletedBy nvarchar(200) NULL,
+        DeleteReason nvarchar(1000) NULL
     );
+END;
+GO
+
+IF COL_LENGTH('dbo.CaseFiles', 'IsDeleted') IS NULL
+BEGIN
+    ALTER TABLE dbo.CaseFiles ADD
+        IsDeleted bit NOT NULL CONSTRAINT DF_CaseFiles_IsDeleted DEFAULT 0,
+        DeletedAt datetime2 NULL,
+        DeletedBy nvarchar(200) NULL,
+        DeleteReason nvarchar(1000) NULL;
 END;
 GO
 

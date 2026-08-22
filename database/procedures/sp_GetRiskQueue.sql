@@ -40,7 +40,8 @@ BEGIN
             INNER JOIN dbo.RiskRules rr ON rr.RiskRuleId = rf.RiskRuleId
             WHERE rf.ClaimId = c.ClaimId
         ) flags
-        WHERE (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+        WHERE cf.IsDeleted = 0
+          AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
           AND (@Status IS NULL OR cf.Status = @Status)
           AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
           AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)

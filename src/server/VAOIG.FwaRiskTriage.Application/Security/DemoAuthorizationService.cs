@@ -10,24 +10,24 @@ public sealed class DemoAuthorizationService
             ], StringComparer.OrdinalIgnoreCase),
             ["Analyst"] = new HashSet<string>([
                 "CanViewDashboard", "CanViewRiskQueue", "CanViewCaseDetail",
-                "CanAddCaseNote", "CanChangeCaseStatus", "CanCreateRiskRecord",
-                "CanEscalateRiskRecord", "CanExportReports"
+                "CanEditCase", "CanDeleteCase", "CanAddCaseNote", "CanChangeCaseStatus", "CanCreateCaseRecord",
+                "CanEscalateCase", "CanExportReports"
             ], StringComparer.OrdinalIgnoreCase),
             ["Investigator"] = new HashSet<string>([
                 "CanViewDashboard", "CanViewRiskQueue", "CanViewCaseDetail",
-                "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
-                "CanManageProviders", "CanExportReports"
+                "CanEditCase", "CanDeleteCase", "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
+                "CanCreateCaseRecord", "CanEscalateCase", "CanManageProviders", "CanExportReports"
             ], StringComparer.OrdinalIgnoreCase),
             ["Supervisor"] = new HashSet<string>([
                 "CanViewDashboard", "CanViewRiskQueue", "CanViewCaseDetail",
-                "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
-                "CanCreateRiskRecord", "CanEscalateRiskRecord",
+                "CanEditCase", "CanDeleteCase", "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
+                "CanCreateCaseRecord", "CanEscalateCase",
                 "CanManageProviders", "CanManageProcedureCodes", "CanExportReports"
             ], StringComparer.OrdinalIgnoreCase),
             ["Administrator"] = new HashSet<string>([
                 "CanViewDashboard", "CanViewRiskQueue", "CanViewCaseDetail",
-                "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
-                "CanCreateRiskRecord", "CanEscalateRiskRecord", "CanEditRiskRules",
+                "CanEditCase", "CanDeleteCase", "CanAddCaseNote", "CanChangeCaseStatus", "CanReferCase",
+                "CanCreateCaseRecord", "CanEscalateCase", "CanEditRiskRules",
                 "CanExportReports", "CanViewAdmin", "CanManageDemoPermissions",
                 "CanViewAudit", "CanManageProviders", "CanManageProcedureCodes"
             ], StringComparer.OrdinalIgnoreCase)

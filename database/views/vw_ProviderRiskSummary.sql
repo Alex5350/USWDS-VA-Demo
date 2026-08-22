@@ -14,7 +14,7 @@ SELECT
     AverageRiskScore = CAST(ISNULL(AVG(CAST(cf.RiskScore AS decimal(18,2))), 0) AS decimal(18,1))
 FROM dbo.Providers p
 LEFT JOIN dbo.Claims c ON c.ProviderId = p.ProviderId
-LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId
+LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId AND cf.IsDeleted = 0
 GROUP BY
     p.ProviderId,
     p.ProviderName,

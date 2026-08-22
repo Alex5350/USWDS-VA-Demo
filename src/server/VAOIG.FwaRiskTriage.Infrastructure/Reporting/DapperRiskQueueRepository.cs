@@ -26,7 +26,8 @@ public sealed class DapperRiskQueueRepository(SqlConnectionFactory connectionFac
             INNER JOIN Providers p ON p.ProviderId = c.ProviderId
             LEFT JOIN RiskFindings rf ON rf.ClaimId = c.ClaimId
             LEFT JOIN RiskRules rr ON rr.RiskRuleId = rf.RiskRuleId
-            WHERE (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+            WHERE cf.IsDeleted = CAST(0 AS bit)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@Status IS NULL OR cf.Status = @Status)
               AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
@@ -46,7 +47,8 @@ public sealed class DapperRiskQueueRepository(SqlConnectionFactory connectionFac
             FROM CaseFiles cf
             INNER JOIN Claims c ON c.ClaimId = cf.ClaimId
             INNER JOIN Providers p ON p.ProviderId = c.ProviderId
-            WHERE (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+            WHERE cf.IsDeleted = CAST(0 AS bit)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@Status IS NULL OR cf.Status = @Status)
               AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)

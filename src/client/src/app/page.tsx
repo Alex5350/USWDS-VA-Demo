@@ -23,8 +23,8 @@ const primaryWorkflows = [
     action: "Review risk queue"
   },
   {
-    href: "/risk-queue/new",
-    label: "Add review candidate",
+    href: "/cases/new",
+    label: "Create case record",
     description: "Create a manual triage record from analyst intake using explainable risk indicators.",
     action: "Start intake"
   },

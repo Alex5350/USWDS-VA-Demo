@@ -7,6 +7,6 @@ SELECT
     HighRiskClaimCount = SUM(CASE WHEN cf.RiskLevel IN (N'High', N'Critical') THEN 1 ELSE 0 END),
     CaseCount = COUNT(cf.CaseId)
 FROM dbo.Claims c
-LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId
+LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId AND cf.IsDeleted = 0
 GROUP BY DATEFROMPARTS(YEAR(c.ServiceDate), MONTH(c.ServiceDate), 1);
 GO

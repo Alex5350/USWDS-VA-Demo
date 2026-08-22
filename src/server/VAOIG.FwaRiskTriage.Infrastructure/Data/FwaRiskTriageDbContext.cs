@@ -131,7 +131,12 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
             entity.Property(x => x.Priority).HasMaxLength(50).IsRequired();
             entity.Property(x => x.RiskLevel).HasMaxLength(50).IsRequired();
             entity.Property(x => x.EstimatedQuestionedCost).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.IsDeleted).HasDefaultValue(false);
+            entity.Property(x => x.DeletedBy).HasMaxLength(200);
+            entity.Property(x => x.DeleteReason).HasMaxLength(1000);
             entity.HasOne<Claim>().WithMany().HasForeignKey(x => x.ClaimId);
+            entity.HasIndex(x => new { x.IsDeleted, x.Status, x.RiskLevel, x.RiskScore });
+            entity.HasIndex(x => x.DeletedAt);
         });
 
         modelBuilder.Entity<CaseNote>(entity =>

@@ -8,11 +8,13 @@ public static class Policies
     public const string CanViewDashboard = "CanViewDashboard";
     public const string CanViewRiskQueue = "CanViewRiskQueue";
     public const string CanViewCaseDetail = "CanViewCaseDetail";
+    public const string CanEditCase = "CanEditCase";
+    public const string CanDeleteCase = "CanDeleteCase";
     public const string CanAddCaseNote = "CanAddCaseNote";
     public const string CanChangeCaseStatus = "CanChangeCaseStatus";
     public const string CanReferCase = "CanReferCase";
-    public const string CanCreateRiskRecord = "CanCreateRiskRecord";
-    public const string CanEscalateRiskRecord = "CanEscalateRiskRecord";
+    public const string CanCreateCaseRecord = "CanCreateCaseRecord";
+    public const string CanEscalateCase = "CanEscalateCase";
     public const string CanEditRiskRules = "CanEditRiskRules";
     public const string CanExportReports = "CanExportReports";
     public const string CanViewAdmin = "CanViewAdmin";
@@ -26,11 +28,13 @@ public static class Policies
         CanViewDashboard,
         CanViewRiskQueue,
         CanViewCaseDetail,
+        CanEditCase,
+        CanDeleteCase,
         CanAddCaseNote,
         CanChangeCaseStatus,
         CanReferCase,
-        CanCreateRiskRecord,
-        CanEscalateRiskRecord,
+        CanCreateCaseRecord,
+        CanEscalateCase,
         CanEditRiskRules,
         CanExportReports,
         CanViewAdmin,

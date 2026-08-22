@@ -8,11 +8,13 @@ export type Permission =
   | "CanViewDashboard"
   | "CanViewRiskQueue"
   | "CanViewCaseDetail"
+  | "CanEditCase"
+  | "CanDeleteCase"
   | "CanAddCaseNote"
   | "CanChangeCaseStatus"
   | "CanReferCase"
-  | "CanCreateRiskRecord"
-  | "CanEscalateRiskRecord"
+  | "CanCreateCaseRecord"
+  | "CanEscalateCase"
   | "CanEditRiskRules"
   | "CanExportReports"
   | "CanViewAdmin"
@@ -35,11 +37,13 @@ export const allPermissions: Permission[] = [
   "CanViewDashboard",
   "CanViewRiskQueue",
   "CanViewCaseDetail",
+  "CanEditCase",
+  "CanDeleteCase",
   "CanAddCaseNote",
   "CanChangeCaseStatus",
   "CanReferCase",
-  "CanCreateRiskRecord",
-  "CanEscalateRiskRecord",
+  "CanCreateCaseRecord",
+  "CanEscalateCase",
   "CanEditRiskRules",
   "CanExportReports",
   "CanViewAdmin",
@@ -64,10 +68,12 @@ export const demoUsers: DemoUser[] = [
       "CanViewDashboard",
       "CanViewRiskQueue",
       "CanViewCaseDetail",
+      "CanEditCase",
+      "CanDeleteCase",
       "CanAddCaseNote",
       "CanChangeCaseStatus",
-      "CanCreateRiskRecord",
-      "CanEscalateRiskRecord",
+      "CanCreateCaseRecord",
+      "CanEscalateCase",
       "CanExportReports"
     ]
   },
@@ -79,9 +85,13 @@ export const demoUsers: DemoUser[] = [
       "CanViewDashboard",
       "CanViewRiskQueue",
       "CanViewCaseDetail",
+      "CanEditCase",
+      "CanDeleteCase",
       "CanAddCaseNote",
       "CanChangeCaseStatus",
       "CanReferCase",
+      "CanCreateCaseRecord",
+      "CanEscalateCase",
       "CanManageProviders",
       "CanExportReports"
     ]
@@ -94,11 +104,13 @@ export const demoUsers: DemoUser[] = [
       "CanViewDashboard",
       "CanViewRiskQueue",
       "CanViewCaseDetail",
+      "CanEditCase",
+      "CanDeleteCase",
       "CanAddCaseNote",
       "CanChangeCaseStatus",
       "CanReferCase",
-      "CanCreateRiskRecord",
-      "CanEscalateRiskRecord",
+      "CanCreateCaseRecord",
+      "CanEscalateCase",
       "CanManageProviders",
       "CanManageProcedureCodes",
       "CanExportReports"
@@ -112,11 +124,13 @@ export const demoUsers: DemoUser[] = [
       "CanViewDashboard",
       "CanViewRiskQueue",
       "CanViewCaseDetail",
+      "CanEditCase",
+      "CanDeleteCase",
       "CanAddCaseNote",
       "CanChangeCaseStatus",
       "CanReferCase",
-      "CanCreateRiskRecord",
-      "CanEscalateRiskRecord",
+      "CanCreateCaseRecord",
+      "CanEscalateCase",
       "CanEditRiskRules",
       "CanExportReports",
       "CanViewAdmin",

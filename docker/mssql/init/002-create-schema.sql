@@ -31,8 +31,22 @@ BEGIN
         RiskLevel nvarchar(50) NOT NULL,
         EstimatedQuestionedCost decimal(18,2) NOT NULL,
         CreatedDate datetime2 NOT NULL CONSTRAINT DF_CaseFiles_CreatedDate DEFAULT SYSUTCDATETIME(),
-        ClosedDate datetime2 NULL
+        ClosedDate datetime2 NULL,
+        IsDeleted bit NOT NULL CONSTRAINT DF_CaseFiles_IsDeleted DEFAULT 0,
+        DeletedAt datetime2 NULL,
+        DeletedBy nvarchar(200) NULL,
+        DeleteReason nvarchar(1000) NULL
     );
+END;
+GO
+
+IF COL_LENGTH('dbo.CaseFiles', 'IsDeleted') IS NULL
+BEGIN
+    ALTER TABLE dbo.CaseFiles ADD
+        IsDeleted bit NOT NULL CONSTRAINT DF_CaseFiles_IsDeleted DEFAULT 0,
+        DeletedAt datetime2 NULL,
+        DeletedBy nvarchar(200) NULL,
+        DeleteReason nvarchar(1000) NULL;
 END;
 GO
 
@@ -352,9 +366,9 @@ CREATE OR ALTER VIEW dbo.vw_DashboardSummary
 AS
 SELECT
     TotalClaimsReviewed = CAST((SELECT COUNT_BIG(*) FROM dbo.Claims) AS int),
-    HighRiskClaims = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE RiskLevel = N'High') AS int),
-    CriticalRiskClaims = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE RiskLevel = N'Critical') AS int),
-    EstimatedQuestionedCost = CAST(ISNULL((SELECT SUM(EstimatedQuestionedCost) FROM dbo.CaseFiles), 0) AS decimal(18,2)),
+    HighRiskClaims = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE IsDeleted = 0 AND RiskLevel = N'High') AS int),
+    CriticalRiskClaims = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE IsDeleted = 0 AND RiskLevel = N'Critical') AS int),
+    EstimatedQuestionedCost = CAST(ISNULL((SELECT SUM(EstimatedQuestionedCost) FROM dbo.CaseFiles WHERE IsDeleted = 0), 0) AS decimal(18,2)),
     DuplicatePaymentCandidates = CAST((
         SELECT COUNT_BIG(*)
         FROM dbo.Claims c
@@ -377,16 +391,18 @@ SELECT
             SELECT c.ProviderId
             FROM dbo.Claims c
             INNER JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId
-            WHERE cf.RiskLevel IN (N'High', N'Critical')
+            WHERE cf.IsDeleted = 0
+              AND cf.RiskLevel IN (N'High', N'Critical')
             GROUP BY c.ProviderId
             HAVING COUNT_BIG(*) >= 3
         ) p
     ) AS int),
-    OpenCases = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE Status <> N'Closed') AS int),
+    OpenCases = CAST((SELECT COUNT_BIG(*) FROM dbo.CaseFiles WHERE IsDeleted = 0 AND Status <> N'Closed') AS int),
     AverageCaseAgeDays = CAST(ISNULL((
         SELECT AVG(CAST(DATEDIFF(day, CreatedDate, COALESCE(ClosedDate, SYSUTCDATETIME())) AS decimal(18,2)))
         FROM dbo.CaseFiles
-        WHERE Status <> N'Closed'
+        WHERE IsDeleted = 0
+          AND Status <> N'Closed'
     ), 0) AS decimal(18,1));
 GO
 CREATE OR ALTER VIEW dbo.vw_ProviderRiskSummary
@@ -405,7 +421,7 @@ SELECT
     AverageRiskScore = CAST(ISNULL(AVG(CAST(cf.RiskScore AS decimal(18,2))), 0) AS decimal(18,1))
 FROM dbo.Providers p
 LEFT JOIN dbo.Claims c ON c.ProviderId = p.ProviderId
-LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId
+LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId AND cf.IsDeleted = 0
 GROUP BY
     p.ProviderId,
     p.ProviderName,
@@ -423,6 +439,7 @@ SELECT
     Days61Plus = SUM(CASE WHEN DATEDIFF(day, CreatedDate, COALESCE(ClosedDate, SYSUTCDATETIME())) >= 61 THEN 1 ELSE 0 END),
     TotalCases = COUNT_BIG(*)
 FROM dbo.CaseFiles
+WHERE IsDeleted = 0
 GROUP BY Status;
 GO
 CREATE OR ALTER VIEW dbo.vw_QuestionedCostByMonth
@@ -434,7 +451,7 @@ SELECT
     HighRiskClaimCount = SUM(CASE WHEN cf.RiskLevel IN (N'High', N'Critical') THEN 1 ELSE 0 END),
     CaseCount = COUNT(cf.CaseId)
 FROM dbo.Claims c
-LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId
+LEFT JOIN dbo.CaseFiles cf ON cf.ClaimId = c.ClaimId AND cf.IsDeleted = 0
 GROUP BY DATEFROMPARTS(YEAR(c.ServiceDate), MONTH(c.ServiceDate), 1);
 GO
 
@@ -480,7 +497,8 @@ BEGIN
             INNER JOIN dbo.RiskRules rr ON rr.RiskRuleId = rf.RiskRuleId
             WHERE rf.ClaimId = c.ClaimId
         ) flags
-        WHERE (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+        WHERE cf.IsDeleted = 0
+          AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
           AND (@Status IS NULL OR cf.Status = @Status)
           AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
           AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)

@@ -12,4 +12,8 @@ public sealed class CaseFile
     public decimal EstimatedQuestionedCost { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime? ClosedDate { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public string? DeletedBy { get; set; }
+    public string? DeleteReason { get; set; }
 }

@@ -8,5 +8,6 @@ SELECT
     Days61Plus = SUM(CASE WHEN DATEDIFF(day, CreatedDate, COALESCE(ClosedDate, SYSUTCDATETIME())) >= 61 THEN 1 ELSE 0 END),
     TotalCases = COUNT_BIG(*)
 FROM dbo.CaseFiles
+WHERE IsDeleted = 0
 GROUP BY Status;
 GO

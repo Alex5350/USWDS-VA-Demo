@@ -41,7 +41,7 @@ Core routes:
 - `/`
 - `/dashboard`
 - `/risk-queue`
-- `/risk-queue/new`
+- `/cases/new`
 - `/cases/[caseId]`
 - `/rules`
 - `/reports`

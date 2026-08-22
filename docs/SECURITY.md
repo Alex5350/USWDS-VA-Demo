@@ -34,11 +34,13 @@ The `X-Demo-User` header is intentionally easy to switch for demonstrations. It 
 | View dashboard | Yes | Yes | Yes | Yes | Yes |
 | View risk queue | Yes | Yes | Yes | Yes | Yes |
 | View case detail | Yes | Yes | Yes | Yes | Yes |
+| Edit case detail | No | Yes | Yes | Yes | Yes |
+| Soft-delete and restore case detail | No | Yes | Yes | Yes | Yes |
 | Add case note | No | Yes | Yes | Yes | Yes |
 | Change case status | No | Yes | Yes | Yes | Yes |
 | Mark case referred | No | No | Yes | Yes | Yes |
-| Create risk record | No | Yes | No | Yes | Yes |
-| Escalate risk record | No | Yes | No | Yes | Yes |
+| Create case record | No | Yes | Yes | Yes | Yes |
+| Escalate case | No | Yes | Yes | Yes | Yes |
 | Manage providers | No | No | Yes | Yes | Yes |
 | Manage procedure codes | No | No | No | Yes | Yes |
 | Edit risk rules | No | No | No | No | Yes |
@@ -54,11 +56,13 @@ Required policies:
 - `CanViewDashboard`
 - `CanViewRiskQueue`
 - `CanViewCaseDetail`
+- `CanEditCase`
+- `CanDeleteCase`
 - `CanAddCaseNote`
 - `CanChangeCaseStatus`
 - `CanReferCase`
-- `CanCreateRiskRecord`
-- `CanEscalateRiskRecord`
+- `CanCreateCaseRecord`
+- `CanEscalateCase`
 - `CanManageProviders`
 - `CanManageProcedureCodes`
 - `CanEditRiskRules`
@@ -75,8 +79,9 @@ Administrators can assign effective permissions to fake demo users from `/admin/
 
 Audit events are written for:
 
-- Manual review candidate creation
-- Risk record escalation
+- Manual case record creation
+- Case record updates and deletions
+- Case escalation
 - Provider administration changes
 - Procedure-code administration changes
 - Demo permission updates

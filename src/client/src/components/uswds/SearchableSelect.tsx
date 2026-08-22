@@ -1,6 +1,6 @@
 "use client";
 
-import { type FocusEvent, type KeyboardEvent, useId, useMemo, useRef, useState } from "react";
+import { type FocusEvent, type KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { UsaFormGroup } from "@/components/uswds/UsaFormGroup";
 
@@ -33,8 +33,10 @@ export function SearchableSelect({
   const listId = `${id}-${generatedId}-list`;
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pointerStartedInsideRef = useRef(false);
   const [typedValue, setTypedValue] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [opensAbove, setOpensAbove] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const selectedOption = useMemo(() => options.find((option) => option.value === value), [options, value]);
   const inputValue = typedValue ?? selectedOption?.label ?? "";
@@ -57,18 +59,44 @@ export function SearchableSelect({
   const safeActiveIndex = Math.min(activeIndex, Math.max(visibleOptions.length - 1, 0));
   const activeOptionId = isOpen && visibleOptions[safeActiveIndex] ? `${listId}-option-${safeActiveIndex}` : undefined;
 
-  function selectOption(option: SearchableOption, shouldFocus = true) {
-    onChange(option.value);
-    setTypedValue(null);
-    setIsOpen(false);
-    if (shouldFocus) {
-      inputRef.current?.focus();
-    }
+  function resetPointerStartedInside() {
+    window.setTimeout(() => {
+      pointerStartedInsideRef.current = false;
+    }, 0);
   }
+
+  const updateListPlacement = useCallback(() => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+
+    const estimatedListHeight = 320;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    setOpensAbove(spaceBelow < estimatedListHeight && spaceAbove > spaceBelow);
+  }, []);
+
+  const openList = useCallback(() => {
+    updateListPlacement();
+    setIsOpen(true);
+  }, [updateListPlacement]);
+
+  const selectOption = useCallback(
+    (option: SearchableOption, shouldFocus = true) => {
+      onChange(option.value);
+      setTypedValue(null);
+      setIsOpen(false);
+      if (shouldFocus) {
+        inputRef.current?.focus();
+      }
+    },
+    [onChange]
+  );
 
   function handleInputChange(nextInputValue: string) {
     setTypedValue(nextInputValue);
-    setIsOpen(true);
+    openList();
     setActiveIndex(0);
 
     const exactMatch = options.find((option) => option.label === nextInputValue);
@@ -79,7 +107,7 @@ export function SearchableSelect({
     }
   }
 
-  function commitCurrentInput() {
+  const commitCurrentInput = useCallback(() => {
     const exactMatch = options.find((option) => option.label === inputValue);
     if (exactMatch) {
       selectOption(exactMatch, false);
@@ -97,11 +125,61 @@ export function SearchableSelect({
     }
 
     setTypedValue(null);
-  }
+  }, [inputValue, options, selectOption]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    function handleDocumentPointerDown(event: PointerEvent) {
+      const target = event.target;
+      const startedInside =
+        target instanceof Node ? (containerRef.current?.contains(target) ?? false) : false;
+
+      pointerStartedInsideRef.current = startedInside;
+
+      if (!startedInside) {
+        setIsOpen(false);
+        commitCurrentInput();
+      }
+    }
+
+    function handleDocumentPointerUp() {
+      resetPointerStartedInside();
+    }
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+    document.addEventListener("pointerup", handleDocumentPointerUp, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+      document.removeEventListener("pointerup", handleDocumentPointerUp, true);
+    };
+  }, [commitCurrentInput, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    updateListPlacement();
+    window.addEventListener("resize", updateListPlacement);
+    window.addEventListener("scroll", updateListPlacement, true);
+
+    return () => {
+      window.removeEventListener("resize", updateListPlacement);
+      window.removeEventListener("scroll", updateListPlacement, true);
+    };
+  }, [isOpen, updateListPlacement]);
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     const nextTarget = event.relatedTarget;
     if (nextTarget && containerRef.current?.contains(nextTarget)) {
+      return;
+    }
+
+    if (pointerStartedInsideRef.current) {
       return;
     }
 
@@ -112,14 +190,14 @@ export function SearchableSelect({
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setIsOpen(true);
+      openList();
       setActiveIndex((current) => Math.min(current + 1, Math.max(visibleOptions.length - 1, 0)));
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setIsOpen(true);
+      openList();
       setActiveIndex((current) => Math.max(current - 1, 0));
       return;
     }
@@ -138,7 +216,16 @@ export function SearchableSelect({
 
   return (
     <UsaFormGroup id={id} label={label}>
-      <div className="searchable-select-control" ref={containerRef} onBlur={handleBlur}>
+      <div
+        className={`searchable-select-control${opensAbove ? " is-open-above" : ""}`}
+        ref={containerRef}
+        onBlur={handleBlur}
+        onPointerDownCapture={() => {
+          pointerStartedInsideRef.current = true;
+        }}
+        onPointerUpCapture={resetPointerStartedInside}
+        onPointerCancelCapture={resetPointerStartedInside}
+      >
         <div className="searchable-select-input-row">
           <input
             aria-activedescendant={activeOptionId}
@@ -154,8 +241,8 @@ export function SearchableSelect({
             role="combobox"
             value={inputValue}
             onChange={(event) => handleInputChange(event.target.value)}
-            onClick={() => setIsOpen(true)}
-            onFocus={() => setIsOpen(true)}
+            onClick={openList}
+            onFocus={openList}
             onKeyDown={handleKeyDown}
           />
           <button
@@ -163,7 +250,14 @@ export function SearchableSelect({
             className="searchable-select-toggle"
             type="button"
             onClick={() => {
-              setIsOpen((current) => !current);
+              setIsOpen((current) => {
+                const shouldOpen = !current;
+                if (shouldOpen) {
+                  updateListPlacement();
+                }
+
+                return shouldOpen;
+              });
               inputRef.current?.focus();
             }}
           />

@@ -107,6 +107,33 @@ export type CaseDetail = {
   }[];
 };
 
+export type DeletedCaseRecord = {
+  caseId: number;
+  claimId: number;
+  providerName: string;
+  status: string;
+  riskLevel: RiskLevel;
+  riskScore: number;
+  estimatedQuestionedCost: number;
+  createdDate: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  deleteReason: string | null;
+};
+
+export type UpdateCaseRecordRequest = {
+  assignedTo: string | null;
+  priority: string;
+  estimatedQuestionedCost: number;
+  procedureCode: string;
+  serviceDate: string;
+  submittedDate: string;
+  paidDate: string | null;
+  claimAmount: number;
+  paidAmount: number;
+  claimStatus: string;
+};
+
 export type RiskRule = {
   riskRuleId: number;
   ruleCode: string;
@@ -150,7 +177,7 @@ export type PowerBiEmbedConfig = {
   message: string;
 };
 
-export type CreateRiskRecordRequest = {
+export type CreateCaseRecordRequest = {
   providerId: number;
   stateCode: string;
   procedureCodeId: number;
@@ -161,7 +188,7 @@ export type CreateRiskRecordRequest = {
   assignedTo?: string;
 };
 
-export type CreateRiskRecordResponse = {
+export type CreateCaseRecordResponse = {
   caseId: number;
   claimId: number;
   riskScore: number;
@@ -789,6 +816,58 @@ export async function updateCaseStatus(caseId: number, status: string) {
   );
 }
 
+export async function updateCaseRecord(caseId: number, request: UpdateCaseRecordRequest) {
+  const fallback = mockCaseDetails.find((item) => item.caseId === caseId) ?? mockCaseDetails[0];
+  return requestJson<CaseDetail>(
+    `/api/cases/${caseId}`,
+    {
+      ...fallback,
+      assignedTo: request.assignedTo,
+      priority: request.priority,
+      estimatedQuestionedCost: request.estimatedQuestionedCost,
+      claim: {
+        ...fallback.claim,
+        procedureCode: request.procedureCode,
+        serviceDate: request.serviceDate,
+        submittedDate: request.submittedDate,
+        paidDate: request.paidDate,
+        claimAmount: request.claimAmount,
+        paidAmount: request.paidAmount,
+        claimStatus: request.claimStatus
+      }
+    },
+    {
+      method: "PUT",
+      body: JSON.stringify(request)
+    }
+  );
+}
+
+export async function getDeletedCaseRecords() {
+  return requestJson<DeletedCaseRecord[]>("/api/cases/deleted", []);
+}
+
+export async function deleteCaseRecord(caseId: number, reason: string) {
+  return requestJson<{ ok: boolean }>(
+    `/api/cases/${caseId}/delete`,
+    { ok: true },
+    {
+      method: "POST",
+      body: JSON.stringify({ reason })
+    }
+  );
+}
+
+export async function restoreCaseRecord(caseId: number) {
+  return requestJson<{ ok: boolean }>(
+    `/api/cases/${caseId}/restore`,
+    { ok: true },
+    {
+      method: "PUT"
+    }
+  );
+}
+
 export async function escalateCase(caseId: number) {
   return requestJson<{ ok: boolean }>(
     `/api/cases/${caseId}/escalate`,
@@ -799,9 +878,9 @@ export async function escalateCase(caseId: number) {
   );
 }
 
-export async function createRiskRecord(request: CreateRiskRecordRequest) {
-  return requestJson<CreateRiskRecordResponse>(
-    "/api/risk-records",
+export async function createCaseRecord(request: CreateCaseRecordRequest) {
+  return requestJson<CreateCaseRecordResponse>(
+    "/api/cases",
     {
       caseId: Date.now(),
       claimId: Date.now(),

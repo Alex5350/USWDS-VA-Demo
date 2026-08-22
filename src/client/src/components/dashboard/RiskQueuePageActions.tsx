@@ -6,13 +6,13 @@ import { useDemoUser } from "@/lib/demo-auth";
 export function RiskQueuePageActions() {
   const { hasPermission } = useDemoUser();
 
-  if (!hasPermission("CanCreateRiskRecord")) {
+  if (!hasPermission("CanCreateCaseRecord")) {
     return null;
   }
 
   return (
     <div className="page-header-actions">
-      <UsaButton href="/risk-queue/new">Add review candidate</UsaButton>
+      <UsaButton href="/cases/new">Create case record</UsaButton>
     </div>
   );
 }

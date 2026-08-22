@@ -117,7 +117,7 @@ Show filters:
 
 Explain that the queue sorts by risk score and provides drill-down to case detail.
 
-Open **Add review candidate** from the risk queue section. Show that manual intake uses searchable existing provider names, all seeded U.S. states and territories, meaningful procedure codes, fractional U.S. dollar amounts, and explainable risk indicators. Emphasize that creating a review candidate records potential risk indicators only.
+Open **Create case record** from the risk queue section. Show that manual intake uses searchable existing provider names, all seeded U.S. states and territories, meaningful procedure codes, fractional U.S. dollar amounts, and explainable risk indicators. Emphasize that creating a case record captures potential risk indicators only and does not determine fraud, waste, or abuse.
 
 ## 8. Case Detail
 

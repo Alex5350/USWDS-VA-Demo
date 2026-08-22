@@ -11,7 +11,7 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
     public async Task<CaseDetailDto?> GetCaseDetailAsync(int caseId, CancellationToken cancellationToken)
     {
         var caseFile = await dbContext.CaseFiles.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.CaseId == caseId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
         if (caseFile is null)
         {
             return null;
@@ -98,6 +98,27 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
             notes);
     }
 
+    public async Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(CancellationToken cancellationToken) =>
+        await (
+                from caseFile in dbContext.CaseFiles.AsNoTracking()
+                join claim in dbContext.Claims.AsNoTracking() on caseFile.ClaimId equals claim.ClaimId
+                join provider in dbContext.Providers.AsNoTracking() on claim.ProviderId equals provider.ProviderId
+                where caseFile.IsDeleted
+                orderby caseFile.DeletedAt descending, caseFile.CaseId descending
+                select new DeletedCaseRecordDto(
+                    caseFile.CaseId,
+                    claim.ClaimId,
+                    provider.ProviderName,
+                    caseFile.Status,
+                    caseFile.RiskLevel,
+                    caseFile.RiskScore,
+                    caseFile.EstimatedQuestionedCost,
+                    caseFile.CreatedDate,
+                    caseFile.DeletedAt,
+                    caseFile.DeletedBy,
+                    caseFile.DeleteReason))
+            .ToListAsync(cancellationToken);
+
     public async Task<CaseNoteDto> AddNoteAsync(int caseId, string noteText, string createdBy, DateTime createdDate, CancellationToken cancellationToken)
     {
         var note = new CaseNote
@@ -114,9 +135,79 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
         return new CaseNoteDto(note.NoteId, note.CaseId, note.CreatedBy, note.CreatedDate, note.NoteText);
     }
 
-    public async Task<bool> UpdateStatusAsync(int caseId, string status, DateTime changedAt, CancellationToken cancellationToken)
+    public async Task<CaseDetailDto?> UpdateCaseRecordAsync(
+        int caseId,
+        UpdateCaseRecordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
+        if (caseFile is null)
+        {
+            return null;
+        }
+
+        var claim = await dbContext.Claims.FirstAsync(x => x.ClaimId == caseFile.ClaimId, cancellationToken);
+
+        caseFile.AssignedTo = string.IsNullOrWhiteSpace(request.AssignedTo) ? null : request.AssignedTo.Trim();
+        caseFile.Priority = NormalizeCaseText(request.Priority, "Medium", 50);
+        caseFile.EstimatedQuestionedCost = Math.Max(0, request.EstimatedQuestionedCost);
+
+        claim.ProcedureCode = NormalizeCaseText(request.ProcedureCode, claim.ProcedureCode, 20);
+        claim.ServiceDate = request.ServiceDate;
+        claim.SubmittedDate = request.SubmittedDate;
+        claim.PaidDate = request.PaidDate;
+        claim.ClaimAmount = Math.Max(0, request.ClaimAmount);
+        claim.PaidAmount = Math.Max(0, request.PaidAmount);
+        claim.ClaimStatus = NormalizeCaseText(request.ClaimStatus, claim.ClaimStatus, 50);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await GetCaseDetailAsync(caseId, cancellationToken);
+    }
+
+    public async Task<bool> SoftDeleteCaseRecordAsync(
+        int caseId,
+        string deletedBy,
+        DateTime deletedAt,
+        string? reason,
+        CancellationToken cancellationToken)
     {
         var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId, cancellationToken);
+        if (caseFile is null || caseFile.IsDeleted)
+        {
+            return false;
+        }
+
+        caseFile.IsDeleted = true;
+        caseFile.DeletedAt = deletedAt;
+        caseFile.DeletedBy = NormalizeCaseText(deletedBy, "demo.unknown@local", 200);
+        caseFile.DeleteReason = string.IsNullOrWhiteSpace(reason)
+            ? null
+            : NormalizeCaseText(reason, reason, 1000);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RestoreCaseRecordAsync(int caseId, CancellationToken cancellationToken)
+    {
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId, cancellationToken);
+        if (caseFile is null || !caseFile.IsDeleted)
+        {
+            return false;
+        }
+
+        caseFile.IsDeleted = false;
+        caseFile.DeletedAt = null;
+        caseFile.DeletedBy = null;
+        caseFile.DeleteReason = null;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UpdateStatusAsync(int caseId, string status, DateTime changedAt, CancellationToken cancellationToken)
+    {
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
         if (caseFile is null)
         {
             return false;
@@ -130,7 +221,7 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
 
     public async Task<bool> EscalateAsync(int caseId, DateTime changedAt, CancellationToken cancellationToken)
     {
-        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId, cancellationToken);
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
         if (caseFile is null)
         {
             return false;
@@ -143,8 +234,8 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
         return true;
     }
 
-    public async Task<CreateRiskRecordResponse> CreateRiskRecordAsync(
-        CreateRiskRecordRequest request,
+    public async Task<CreateCaseRecordResponse> CreateCaseRecordAsync(
+        CreateCaseRecordRequest request,
         string createdBy,
         DateTime createdAt,
         CancellationToken cancellationToken)
@@ -260,7 +351,7 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
 
         await transaction.CommitAsync(cancellationToken);
 
-        return new CreateRiskRecordResponse(caseFile.CaseId, claim.ClaimId, riskScore, riskLevel, caseFile.Status);
+        return new CreateCaseRecordResponse(caseFile.CaseId, claim.ClaimId, riskScore, riskLevel, caseFile.Status);
     }
 
     public async Task<IReadOnlyList<RiskRuleDto>> GetRulesAsync(CancellationToken cancellationToken) =>
@@ -292,7 +383,7 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
 
     public Task<string?> GetCaseStatusAsync(int caseId, CancellationToken cancellationToken) =>
         dbContext.CaseFiles.AsNoTracking()
-            .Where(x => x.CaseId == caseId)
+            .Where(x => x.CaseId == caseId && !x.IsDeleted)
             .Select(x => x.Status)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -308,5 +399,11 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
     {
         var normalized = state.Trim().ToUpperInvariant();
         return normalized.Length == 2 ? normalized : "NA";
+    }
+
+    private static string NormalizeCaseText(string? value, string fallback, int maxLength)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        return normalized.Length > maxLength ? normalized[..maxLength] : normalized;
     }
 }

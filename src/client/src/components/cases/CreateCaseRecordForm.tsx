@@ -8,12 +8,12 @@ import { UsaButton } from "@/components/uswds/UsaButton";
 import { UsaFormGroup } from "@/components/uswds/UsaFormGroup";
 import { SearchableSelect } from "@/components/uswds/SearchableSelect";
 import {
-  createRiskRecord,
+  createCaseRecord,
   getProcedureCodes,
   getProviders,
   getRiskRules,
   getStates,
-  type CreateRiskRecordResponse,
+  type CreateCaseRecordResponse,
   type ProcedureCode,
   type Provider,
   type RiskRule,
@@ -22,11 +22,11 @@ import {
 import { useDemoUser } from "@/lib/demo-auth";
 import { preciseCurrencyFormatter } from "@/lib/formatters";
 
-type CreateRiskRecordFormProps = {
-  onCreated?: (record: CreateRiskRecordResponse) => void;
+type CreateCaseRecordFormProps = {
+  onCreated?: (record: CreateCaseRecordResponse) => void;
 };
 
-export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = {}) {
+export function CreateCaseRecordForm({ onCreated }: CreateCaseRecordFormProps = {}) {
   const { hasPermission } = useDemoUser();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [states, setStates] = useState<StateTerritory[]>([]);
@@ -42,7 +42,7 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
   const [riskRuleIds, setRiskRuleIds] = useState<number[]>([]);
   const [message, setMessage] = useState("Complete the required selections below. Risk indicators remain review candidates, not determinations.");
   const [error, setError] = useState("");
-  const [createdRecord, setCreatedRecord] = useState<CreateRiskRecordResponse | null>(null);
+  const [createdRecord, setCreatedRecord] = useState<CreateCaseRecordResponse | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -111,10 +111,10 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
     [procedureCodes]
   );
 
-  if (!hasPermission("CanCreateRiskRecord")) {
+  if (!hasPermission("CanCreateCaseRecord")) {
     return (
       <UsaAlert slim type="info">
-        Current demo role can view the queue but cannot create manual triage records.
+        Current demo role can view case records but cannot create manual triage case records.
       </UsaAlert>
     );
   }
@@ -168,7 +168,7 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
       return;
     }
 
-    const record = await createRiskRecord({
+    const record = await createCaseRecord({
       providerId: parsedProviderId,
       stateCode,
       procedureCodeId: parsedProcedureCodeId,
@@ -187,8 +187,8 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
   }
 
   return (
-    <section className="form-surface intake-form" aria-labelledby="create-risk-record-heading">
-      <h2 id="create-risk-record-heading">Intake Details</h2>
+    <section className="form-surface intake-form" aria-labelledby="create-case-record-heading">
+      <h2 id="create-case-record-heading">Case Intake Details</h2>
       <p className="status-text" aria-live="polite">
         {message}
       </p>
@@ -199,7 +199,7 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
       ) : null}
       {createdRecord ? (
         <UsaAlert heading={`Case ${createdRecord.caseId} created`} type="success">
-          The synthetic review candidate is now available in the risk queue.{" "}
+          The synthetic case record is now available in the risk queue.{" "}
           <Link href={`/cases/${createdRecord.caseId}`}>Open case detail</Link>.
         </UsaAlert>
       ) : null}
@@ -259,7 +259,7 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
                 id="new-paid-amount"
                 inputMode="decimal"
                 name="paidAmount"
-                pattern="^\\$?\\d{1,9}(,\\d{3})*(\\.\\d{1,2})?$|^\\d{1,9}(\\.\\d{1,2})?$"
+                pattern="^\$?\d{1,9}(,\d{3})*(\.\d{1,2})?$|^\d{1,9}(\.\d{1,2})?$"
                 required
                 value={paidAmount}
                 onBlur={normalizePaidAmount}
@@ -322,7 +322,7 @@ export function CreateRiskRecordForm({ onCreated }: CreateRiskRecordFormProps = 
           </UsaFormGroup>
 
           <div className="action-row">
-            <UsaButton type="submit">Create review candidate</UsaButton>
+            <UsaButton type="submit">Create case record</UsaButton>
           </div>
         </fieldset>
       </form>

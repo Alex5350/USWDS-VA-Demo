@@ -43,15 +43,15 @@ Policy: `CanViewRiskQueue`
 
 Returns paginated review candidates with case ID, claim ID, provider, procedure code, service date, paid amount, risk score, risk level, risk flags, estimated questioned cost, and case status.
 
-## Create Risk Record
+## Create Case Record
 
 ```http
-POST /api/risk-records
+POST /api/cases
 ```
 
-Policy: `CanCreateRiskRecord`
+Policy: `CanCreateCaseRecord`
 
-Creates a manual synthetic review candidate. The API creates a synthetic claim, case file, selected risk findings, and optional analyst note. This is triage intake only and does not represent confirmed fraud, waste, or abuse.
+Creates a manual synthetic case record. The API creates a synthetic claim, case file, selected risk findings, and optional analyst note. This is triage intake only and does not represent confirmed fraud, waste, or abuse.
 
 Request:
 
@@ -63,12 +63,14 @@ Request:
   "serviceDate": "2026-05-31",
   "paidAmount": 1275.50,
   "riskRuleIds": [2, 4, 5],
-  "narrativeSummary": "Synthetic manual review candidate created from analyst intake.",
+  "narrativeSummary": "Synthetic manual case record created from analyst intake.",
   "assignedTo": "Demo Analyst"
 }
 ```
 
 The frontend resolves `providerId`, `stateCode`, and `procedureCodeId` through searchable reference-data controls so long provider names and procedure descriptions do not distort the intake layout.
+
+`POST /api/risk-records` remains available as a backwards-compatible legacy alias for the first demo build, but new code should use `POST /api/cases`.
 
 ## Reference Data
 
@@ -94,11 +96,47 @@ Provider administration is available to Investigator, Supervisor, and Administra
 
 ```http
 GET /api/cases/{caseId}
+PUT /api/cases/{caseId}
+DELETE /api/cases/{caseId}
+POST /api/cases/{caseId}/delete
+GET /api/cases/deleted
+PUT /api/cases/{caseId}/restore
 ```
 
-Policy: `CanViewCaseDetail`
+Policies:
+
+- `GET`: `CanViewCaseDetail`
+- `PUT`: `CanEditCase`
+- `DELETE`, `POST /delete`, `GET /deleted`, `PUT /restore`: `CanDeleteCase`
 
 Returns claim, provider, authorization, risk findings, related hotline complaints, notes, and workflow history.
+
+`PUT /api/cases/{caseId}` updates editable case and claim fields. Provider and procedure-code reference data are managed through their administration endpoints.
+
+```json
+{
+  "assignedTo": "Demo Investigator",
+  "priority": "Critical",
+  "estimatedQuestionedCost": 1384.00,
+  "procedureCode": "73721",
+  "serviceDate": "2026-04-15",
+  "submittedDate": "2026-04-21",
+  "paidDate": "2026-04-28",
+  "claimAmount": 1384.00,
+  "paidAmount": 1384.00,
+  "claimStatus": "Paid"
+}
+```
+
+`POST /api/cases/{caseId}/delete` soft-deletes the synthetic case into the recycle bin and records an audit event. It does not physically remove the linked synthetic claim, findings, or notes.
+
+```json
+{
+  "reason": "Duplicate manual intake entered during demonstration."
+}
+```
+
+`DELETE /api/cases/{caseId}` is kept as a compatibility alias for soft deletion. `GET /api/cases/deleted` lists soft-deleted case records. `PUT /api/cases/{caseId}/restore` restores a soft-deleted case to the active queue.
 
 ## Add Case Note
 
@@ -134,7 +172,7 @@ Request:
 ```
 
 Marking a case `Referred` should require `CanReferCase`.
-Marking a case `Escalated` should require `CanEscalateRiskRecord`.
+Marking a case `Escalated` should require `CanEscalateCase`.
 
 ## Escalate Case
 
@@ -142,7 +180,7 @@ Marking a case `Escalated` should require `CanEscalateRiskRecord`.
 PUT /api/cases/{caseId}/escalate
 ```
 
-Policy: `CanEscalateRiskRecord`
+Policy: `CanEscalateCase`
 
 Updates the case status to `Escalated`, raises priority to `Critical`, and records an audit event.
 

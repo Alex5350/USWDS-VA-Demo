@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { RiskLevelTag } from "@/components/layout/RiskLevelTag";
 import { UsaAlert } from "@/components/uswds/UsaAlert";
@@ -8,7 +10,14 @@ import { UsaBreadcrumb } from "@/components/uswds/UsaBreadcrumb";
 import { UsaButton } from "@/components/uswds/UsaButton";
 import { UsaFormGroup } from "@/components/uswds/UsaFormGroup";
 import { UsaTag } from "@/components/uswds/UsaTag";
-import { addCaseNote, escalateCase, type CaseDetail, getCaseDetail, updateCaseStatus } from "@/lib/api-client";
+import {
+  addCaseNote,
+  deleteCaseRecord,
+  escalateCase,
+  type CaseDetail,
+  getCaseDetail,
+  updateCaseStatus
+} from "@/lib/api-client";
 import { useDemoUser } from "@/lib/demo-auth";
 import { formatDate, preciseCurrencyFormatter } from "@/lib/formatters";
 
@@ -17,12 +26,18 @@ type CaseDetailViewProps = {
 };
 
 export function CaseDetailView({ caseId }: CaseDetailViewProps) {
+  const router = useRouter();
   const { user, hasPermission } = useDemoUser();
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
   const [status, setStatus] = useState("New");
   const [noteText, setNoteText] = useState("");
   const [message, setMessage] = useState("Loading case detail.");
   const [noteError, setNoteError] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -91,7 +106,7 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
   }
 
   async function handleEscalate() {
-    if (!caseDetail || !hasPermission("CanEscalateRiskRecord")) {
+    if (!caseDetail || !hasPermission("CanEscalateCase")) {
       return;
     }
 
@@ -99,6 +114,33 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
     setCaseDetail({ ...caseDetail, status: "Escalated", priority: "Critical" });
     setStatus("Escalated");
     setMessage("Case escalated for supervisory review.");
+  }
+
+  function openDeleteDialog() {
+    if (!caseDetail || !hasPermission("CanDeleteCase")) {
+      return;
+    }
+
+    setDeleteReason("");
+    setDeleteConfirmation("");
+    setDeleteError("");
+    setIsDeleteDialogOpen(true);
+  }
+
+  async function handleDeleteCase() {
+    if (!caseDetail || !hasPermission("CanDeleteCase")) {
+      return;
+    }
+
+    const expectedConfirmation = `DELETE CASE ${caseDetail.caseId}`;
+    if (deleteConfirmation.trim() !== expectedConfirmation) {
+      setDeleteError(`Type ${expectedConfirmation} to confirm this soft delete.`);
+      return;
+    }
+
+    setIsDeleting(true);
+    await deleteCaseRecord(caseDetail.caseId, deleteReason.trim());
+    router.push("/cases/recycle-bin");
   }
 
   if (!caseDetail) {
@@ -120,6 +162,22 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
           { label: `Case ${caseDetail.caseId}` }
         ]}
       />
+
+      {hasPermission("CanCreateCaseRecord") ? (
+        <div className="page-header-actions no-print" aria-label="Case record actions">
+          <Link className="usa-button" href="/cases/new">
+            Create case record
+          </Link>
+          <Link className="usa-button usa-button--outline" href="/risk-queue">
+            Back to risk queue
+          </Link>
+          {hasPermission("CanDeleteCase") ? (
+            <Link className="usa-button usa-button--outline" href="/cases/recycle-bin">
+              Recycle bin
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       <p className="status-text" aria-live="polite">
         {message}
@@ -187,7 +245,7 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
               >
                 <option>New</option>
                 <option>UnderReview</option>
-                <option disabled={!hasPermission("CanEscalateRiskRecord")}>Escalated</option>
+                <option disabled={!hasPermission("CanEscalateCase")}>Escalated</option>
                 <option disabled={!hasPermission("CanReferCase")}>Referred</option>
                 <option>Closed</option>
               </select>
@@ -200,17 +258,96 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 Print case
               </UsaButton>
               <UsaButton
-                disabled={!hasPermission("CanEscalateRiskRecord") || caseDetail.status === "Escalated"}
+                disabled={!hasPermission("CanEscalateCase") || caseDetail.status === "Escalated"}
                 type="button"
                 variant="outline"
                 onClick={handleEscalate}
               >
                 Escalate
               </UsaButton>
+              {hasPermission("CanEditCase") ? (
+                <UsaButton href={`/cases/${caseDetail.caseId}/edit`} variant="outline">
+                  Edit case
+                </UsaButton>
+              ) : (
+                <UsaButton disabled type="button" variant="outline">
+                  Edit case
+                </UsaButton>
+              )}
+              <UsaButton disabled={!hasPermission("CanDeleteCase")} type="button" variant="outline" onClick={openDeleteDialog}>
+                Delete case
+              </UsaButton>
             </div>
           </form>
+          {!hasPermission("CanDeleteCase") ? (
+            <p className="status-text">Current demo role cannot delete case records.</p>
+          ) : null}
         </div>
       </section>
+
+      {isDeleteDialogOpen ? (
+        <div className="modal-scrim" role="presentation">
+          <section
+            aria-labelledby="delete-case-dialog-heading"
+            aria-modal="true"
+            className="confirm-dialog"
+            role="dialog"
+          >
+            <div className="confirm-dialog__header">
+              <p className="page-eyebrow">Soft delete case record</p>
+              <h2 id="delete-case-dialog-heading">Move Case {caseDetail.caseId} to recycle bin?</h2>
+            </div>
+            <p>
+              This action removes the case from the active risk queue and reports, but keeps the synthetic case, claim,
+              notes, and findings available for restore.
+            </p>
+            <dl className="confirm-dialog__facts">
+              <div>
+                <dt>Provider</dt>
+                <dd>{caseDetail.provider.providerName}</dd>
+              </div>
+              <div>
+                <dt>Questioned cost</dt>
+                <dd>{preciseCurrencyFormatter.format(caseDetail.estimatedQuestionedCost)}</dd>
+              </div>
+              <div>
+                <dt>Risk level</dt>
+                <dd>{caseDetail.riskLevel}</dd>
+              </div>
+            </dl>
+            <UsaFormGroup id="delete-reason" label="Reason for soft delete">
+              <textarea
+                className="usa-textarea"
+                id="delete-reason"
+                rows={3}
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+              />
+            </UsaFormGroup>
+            <UsaFormGroup id="delete-confirmation" label={`Type DELETE CASE ${caseDetail.caseId} to confirm`} error={deleteError}>
+              <input
+                aria-describedby={deleteError ? "delete-confirmation-error" : undefined}
+                autoFocus
+                className="usa-input"
+                id="delete-confirmation"
+                value={deleteConfirmation}
+                onChange={(event) => {
+                  setDeleteConfirmation(event.target.value);
+                  setDeleteError("");
+                }}
+              />
+            </UsaFormGroup>
+            <div className="action-row confirm-dialog__actions">
+              <UsaButton disabled={isDeleting} type="button" variant="secondary" onClick={handleDeleteCase}>
+                {isDeleting ? "Moving case..." : "Move to recycle bin"}
+              </UsaButton>
+              <UsaButton disabled={isDeleting} type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancel
+              </UsaButton>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <section className="detail-grid" aria-label="Claim, provider, and authorization details">
         <div className="panel">

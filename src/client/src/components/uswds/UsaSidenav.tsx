@@ -19,7 +19,10 @@ const navItems: NavItem[] = [
     href: "/risk-queue",
     label: "Risk queue",
     permission: "CanViewRiskQueue",
-    children: [{ href: "/risk-queue/new", label: "Add review candidate", permission: "CanCreateRiskRecord" }]
+    children: [
+      { href: "/cases/new", label: "Create case record", permission: "CanCreateCaseRecord" },
+      { href: "/cases/recycle-bin", label: "Recycle bin", permission: "CanDeleteCase" }
+    ]
   },
   { href: "/rules", label: "Rules", permission: "CanViewRiskQueue" },
   { href: "/reports", label: "Reports", permission: "CanViewDashboard" },

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using VAOIG.FwaRiskTriage.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using VAOIG.FwaRiskTriage.Infrastructure.Data;
 namespace VAOIG.FwaRiskTriage.Infrastructure.Migrations
 {
     [DbContext(typeof(FwaRiskTriageDbContext))]
-    partial class FwaRiskTriageDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260601053500_AddCaseSoftDeleteRecycleBin")]
+    partial class AddCaseSoftDeleteRecycleBin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

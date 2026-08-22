@@ -14,7 +14,7 @@ Screenshot placeholders for the public demo:
 
 - Dashboard executive summary
 - Risk queue with filters
-- Add review candidate intake with searchable reference data
+- Create case record intake with searchable reference data
 - Case detail with explainable risk findings
 - Reports page with Power BI placeholder and SQL-backed fallback
 - Provider/procedure-code administration pages
@@ -258,7 +258,7 @@ Preferred frontend behavior:
 - `X-Demo-User` sent with API requests
 - Visible notice that authentication is mocked
 
-Analyst, Supervisor, and Administrator can create manual synthetic review candidates. Analyst, Supervisor, and Administrator can also escalate those candidates for supervisory review. Administrators can assign effective demo permissions to fake users and review audit events for candidate creation, escalation, and permission updates.
+Analyst, Investigator, Supervisor, and Administrator can create manual synthetic case records, edit case and claim fields from a separate edit page, escalate cases for supervisory review, and soft-delete cases into a recycle bin. Deleted cases are hidden from the active queue and can be restored. Administrators can assign effective demo permissions to fake users and review audit events for case creation, updates, soft deletion, restoration, escalation, and permission updates.
 
 Investigators, Supervisors, and Administrators can add, update, or disable synthetic providers. Supervisors and Administrators can maintain procedure-code meanings and default amounts. Manual intake uses searchable provider, state/territory, and procedure-code controls instead of free-text provider and code fields.
 

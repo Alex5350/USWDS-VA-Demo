@@ -74,6 +74,7 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
             INNER JOIN Providers p ON p.ProviderId = c.ProviderId
             LEFT JOIN RiskFindings rf ON rf.ClaimId = c.ClaimId
             LEFT JOIN RiskRules rr ON rr.RiskRuleId = rf.RiskRuleId
+            WHERE cf.IsDeleted = CAST(0 AS bit)
             GROUP BY cf.CaseId, c.ClaimId, p.ProviderName, c.ProcedureCode, c.ServiceDate, c.PaidAmount,
                      cf.RiskScore, cf.RiskLevel, cf.EstimatedQuestionedCost, cf.Status
             ORDER BY cf.RiskScore DESC, cf.CaseId DESC;

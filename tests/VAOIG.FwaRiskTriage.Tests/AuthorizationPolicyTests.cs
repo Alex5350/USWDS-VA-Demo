@@ -26,12 +26,33 @@ public sealed class AuthorizationPolicyTests
 
     [Theory]
     [InlineData("Analyst")]
+    [InlineData("Investigator")]
     [InlineData("Supervisor")]
     [InlineData("Administrator")]
-    public void AnalystSupervisorAndAdministratorCanCreateAndEscalateRiskRecords(string role)
+    public void AnalystInvestigatorSupervisorAndAdministratorCanCreateAndEscalateCaseRecords(string role)
     {
-        Assert.True(_authorization.HasPermission([role], "CanCreateRiskRecord"));
-        Assert.True(_authorization.HasPermission([role], "CanEscalateRiskRecord"));
+        Assert.True(_authorization.HasPermission([role], "CanCreateCaseRecord"));
+        Assert.True(_authorization.HasPermission([role], "CanEscalateCase"));
+    }
+
+    [Theory]
+    [InlineData("Analyst")]
+    [InlineData("Investigator")]
+    [InlineData("Supervisor")]
+    [InlineData("Administrator")]
+    public void AnalystInvestigatorSupervisorAndAdministratorCanEditCases(string role)
+    {
+        Assert.True(_authorization.HasPermission([role], "CanEditCase"));
+    }
+
+    [Theory]
+    [InlineData("Analyst")]
+    [InlineData("Investigator")]
+    [InlineData("Supervisor")]
+    [InlineData("Administrator")]
+    public void AnalystInvestigatorSupervisorAndAdministratorCanSoftDeleteCases(string role)
+    {
+        Assert.True(_authorization.HasPermission([role], "CanDeleteCase"));
     }
 
     [Fact]

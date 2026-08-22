@@ -49,13 +49,40 @@ public sealed record CaseDetailDto(
     IReadOnlyList<ComplaintDetailDto> Complaints,
     IReadOnlyList<CaseNoteDto> Notes);
 
+public sealed record DeletedCaseRecordDto(
+    int CaseId,
+    int ClaimId,
+    string ProviderName,
+    string Status,
+    string RiskLevel,
+    int RiskScore,
+    decimal EstimatedQuestionedCost,
+    DateTime CreatedDate,
+    DateTime? DeletedAt,
+    string? DeletedBy,
+    string? DeleteReason);
+
 public sealed record AddCaseNoteRequest(string NoteText, string? CreatedBy);
 
 public sealed record UpdateCaseStatusRequest(string Status);
 
+public sealed record DeleteCaseRecordRequest(string? Reason);
+
+public sealed record UpdateCaseRecordRequest(
+    string? AssignedTo,
+    string Priority,
+    decimal EstimatedQuestionedCost,
+    string ProcedureCode,
+    DateOnly ServiceDate,
+    DateOnly SubmittedDate,
+    DateOnly? PaidDate,
+    decimal ClaimAmount,
+    decimal PaidAmount,
+    string ClaimStatus);
+
 public sealed record UpdateRiskRuleRequest(int Weight, bool IsEnabled);
 
-public sealed record CreateRiskRecordRequest(
+public sealed record CreateCaseRecordRequest(
     int ProviderId,
     string StateCode,
     int ProcedureCodeId,
@@ -65,7 +92,7 @@ public sealed record CreateRiskRecordRequest(
     string? NarrativeSummary,
     string? AssignedTo);
 
-public sealed record CreateRiskRecordResponse(
+public sealed record CreateCaseRecordResponse(
     int CaseId,
     int ClaimId,
     int RiskScore,
