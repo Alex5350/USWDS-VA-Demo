@@ -31,7 +31,10 @@ import {
   storePendingInitialChatMessage,
   takePendingInitialChatMessage
 } from "@/lib/chat-initial-message";
-import { getRandomCaseAssistantSuggestions } from "@/lib/chat-suggestions";
+import {
+  getGeneratedCaseAssistantSuggestions,
+  getRandomCaseAssistantSuggestions
+} from "@/lib/chat-suggestions";
 import { useDemoUser } from "@/lib/demo-auth";
 
 type ChatViewProps =
@@ -54,6 +57,7 @@ export function ChatView(props: ChatViewProps) {
   const activeChatId = props.mode === "existing" ? props.chatId : null;
   const chatDataKey = `${activeChatId ?? "new"}:${user.email}:${canViewRiskQueue}`;
   const initialSendKeyRef = useRef<string | null>(null);
+  const [newChatSuggestionSeed] = useState(createClientSuggestionSeed);
 
   const [composerValue, setComposerValue] = useState("");
   const [pendingInitialMessage, setPendingInitialMessage] = useState<string | null>(null);
@@ -66,15 +70,58 @@ export function ChatView(props: ChatViewProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [removingContextItemId, setRemovingContextItemId] = useState<number | null>(null);
+  const [generatedSuggestionState, setGeneratedSuggestionState] = useState<{
+    key: string;
+    suggestions: ReturnType<typeof getRandomCaseAssistantSuggestions>;
+  } | null>(null);
 
   const transport = useMemo(
     () => createTransport(activeChatId, user.email),
     [activeChatId, user.email]
   );
-  const suggestions = useMemo(
-    () => getRandomCaseAssistantSuggestions(`${user.email}:${activeChatId ?? "new"}`, 4),
-    [activeChatId, user.email]
+  const suggestionRequestKey = `${user.email}:${newChatSuggestionSeed}`;
+  const fallbackSuggestions = useMemo(
+    () => getRandomCaseAssistantSuggestions(`${user.email}:${activeChatId ?? newChatSuggestionSeed}`, 4),
+    [activeChatId, newChatSuggestionSeed, user.email]
   );
+  const suggestions = useMemo(
+    () =>
+      canViewRiskQueue
+        ? props.mode === "new" && generatedSuggestionState?.key === suggestionRequestKey
+          ? generatedSuggestionState.suggestions
+          : fallbackSuggestions
+        : [],
+    [canViewRiskQueue, fallbackSuggestions, generatedSuggestionState, props.mode, suggestionRequestKey]
+  );
+
+  useEffect(() => {
+    if (!canViewRiskQueue || props.mode !== "new") {
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    void getGeneratedCaseAssistantSuggestions({
+      demoUserEmail: user.email,
+      seed: newChatSuggestionSeed,
+      signal: abortController.signal
+    })
+      .then((nextSuggestions) => {
+        if (!abortController.signal.aborted) {
+          setGeneratedSuggestionState({
+            key: suggestionRequestKey,
+            suggestions: nextSuggestions
+          });
+        }
+      })
+      .catch(() => {
+        // The static suggestion set remains available when generated suggestions fail.
+      });
+
+    return () => {
+      abortController.abort();
+    };
+  }, [canViewRiskQueue, newChatSuggestionSeed, props.mode, suggestionRequestKey, user.email]);
 
   const refreshConversationArtifacts = useCallback(async () => {
     if (!canViewRiskQueue) {
@@ -559,4 +606,12 @@ function getStatusText(status: ChatStatus, isCreating: boolean, isLoading: boole
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected chat error.";
+}
+
+function createClientSuggestionSeed() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

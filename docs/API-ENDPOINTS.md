@@ -267,6 +267,14 @@ POST /api/chat/{chatId}
 
 Accepts AI SDK UI messages, validates them, persists the latest user message through the .NET API, streams a Google Gemini response, and persists the assistant message on finish. The Next server process requires `GOOGLE_GENERATIVE_AI_API_KEY`. The body may include `demoUserEmail` and `allowWebSearch`; v1 does not provide a real web-search tool.
 
+Next.js generated suggestion route, served by the frontend app:
+
+```http
+GET /api/chat/suggestions?seed={randomSeed}
+```
+
+Samples read-only synthetic case aggregates from the .NET API and returns four suggested questions for `/chat/new`. If `GOOGLE_GENERATIVE_AI_API_KEY` is configured, the route asks Gemini to generate varied dataset-grounded suggestions. If generation or dataset sampling fails, the route returns a curated static fallback set instead of blocking chat use. The selected demo user is passed with `X-Demo-User`.
+
 .NET chat persistence endpoints:
 
 ```http

@@ -60,6 +60,75 @@ export function getRandomCaseAssistantSuggestions(seed: string, count = 4) {
   return pool.slice(0, Math.min(requestedCount, pool.length));
 }
 
+export function normalizeCaseAssistantSuggestions(
+  candidates: CaseAssistantSuggestion[],
+  fallbackSeed: string,
+  count = 4
+) {
+  const requestedCount = Math.max(0, Math.floor(count));
+  const suggestions: CaseAssistantSuggestion[] = [];
+  const seenPrompts = new Set<string>();
+
+  for (const candidate of candidates) {
+    if (suggestions.length >= requestedCount) {
+      break;
+    }
+
+    const prompt = clampText(normalizeWhitespace(candidate.prompt), 280);
+    const label = clampText(normalizeWhitespace(candidate.label), 48);
+    const normalizedPromptKey = normalizePromptKey(prompt);
+
+    if (label.length < 3 || prompt.length < 20 || seenPrompts.has(normalizedPromptKey)) {
+      continue;
+    }
+
+    seenPrompts.add(normalizedPromptKey);
+    suggestions.push({ label, prompt });
+  }
+
+  for (const fallback of getRandomCaseAssistantSuggestions(fallbackSeed, caseAssistantSuggestionPrompts.length)) {
+    if (suggestions.length >= requestedCount) {
+      break;
+    }
+
+    const normalizedPromptKey = normalizePromptKey(fallback.prompt);
+
+    if (seenPrompts.has(normalizedPromptKey)) {
+      continue;
+    }
+
+    seenPrompts.add(normalizedPromptKey);
+    suggestions.push(fallback);
+  }
+
+  return suggestions;
+}
+
+export async function getGeneratedCaseAssistantSuggestions({
+  demoUserEmail,
+  seed,
+  signal
+}: {
+  demoUserEmail: string;
+  seed: string;
+  signal?: AbortSignal;
+}) {
+  const response = await fetch(`/api/chat/suggestions?${new URLSearchParams({ seed }).toString()}`, {
+    cache: "no-store",
+    headers: {
+      "X-Demo-User": demoUserEmail
+    },
+    signal
+  });
+
+  if (!response.ok) {
+    throw new Error(`Chat suggestion request failed with ${response.status}.`);
+  }
+
+  const body = (await response.json()) as { suggestions?: CaseAssistantSuggestion[] };
+  return normalizeCaseAssistantSuggestions(body.suggestions ?? [], `${demoUserEmail}:${seed}`, 4);
+}
+
 function hashSeed(seed: string) {
   let hash = 2166136261;
 
@@ -73,4 +142,20 @@ function hashSeed(seed: string) {
 
 function nextRandomState(state: number) {
   return (Math.imul(state, 1664525) + 1013904223) >>> 0;
+}
+
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function clampText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return value.slice(0, Math.max(0, maxLength - 1)).trimEnd();
+}
+
+function normalizePromptKey(prompt: string) {
+  return prompt.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
