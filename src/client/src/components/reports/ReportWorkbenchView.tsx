@@ -455,7 +455,6 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
   const [trend, setTrend] = useState<QuestionedCostTrend[]>([]);
   const [aging, setAging] = useState<CaseAging[]>([]);
   const [statusMessage, setStatusMessage] = useState("Loading reporting data.");
-  const [detailStatusMessage, setDetailStatusMessage] = useState("Loading report detail table.");
 
   function createReportHref(nextFilters: ReportFilters) {
     const params = new URLSearchParams();
@@ -573,12 +572,10 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
     });
 
     async function loadProviderRiskPage() {
-      setDetailStatusMessage("Loading report detail table.");
       const providerPageResult = await getProviderRiskReportPage(activeFilters);
 
       if (isMounted) {
         setProviderRiskPage(providerPageResult);
-        setDetailStatusMessage(`Detail table page ${providerPageResult.page} of ${providerPageResult.totalPages} loaded.`);
       }
     }
 
@@ -873,11 +870,6 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
 
       <section className="report-table-panel print-report-section" aria-labelledby="report-table-heading">
         <h2 id="report-table-heading">Report Detail Table</h2>
-        {kind === "command-center" || kind === "provider-risk" ? (
-          <p className="status-text no-print" aria-live="polite">
-            {detailStatusMessage}
-          </p>
-        ) : null}
         {kind === "questioned-cost" ? (
           <UsaTable
             caption="Questioned cost trend report details"
