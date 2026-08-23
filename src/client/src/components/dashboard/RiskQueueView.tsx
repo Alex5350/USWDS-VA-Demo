@@ -162,10 +162,7 @@ function RiskQueueContent({ filters, initialSortDirection }: RiskQueueContentPro
     <div className="page-stack">
       <form className="data-toolbar risk-filter-panel" onSubmit={handleSubmit}>
         <fieldset className="usa-fieldset">
-          <legend className="usa-legend">Filter review candidates</legend>
-          <p className="filter-panel-intro">
-            Refine the triage queue by risk, workflow status, provider attributes, date range, and search terms.
-          </p>
+          <legend className="usa-legend risk-filter-panel__legend">Filter review candidates</legend>
 
           <div className="risk-filter-primary" aria-label="Primary risk queue filters">
             <UsaFormGroup id="riskLevel" label="Risk level">
