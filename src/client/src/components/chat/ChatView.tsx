@@ -7,12 +7,12 @@ import {
   type ChatStatus,
   type UIMessage
 } from "ai";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CaseAssistantPromptInput } from "@/components/chat/CaseAssistantPromptInput";
 import { ChatContextPanel } from "@/components/chat/ChatContextPanel";
-import { ChatHistoryPanel } from "@/components/chat/ChatHistoryPanel";
 import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { UsaAlert } from "@/components/uswds/UsaAlert";
@@ -21,10 +21,8 @@ import {
   deleteChatContextItem,
   getChatAuthHeaders,
   getChatConversation,
-  listChatSessions,
   type ChatConversation,
-  type ChatMessage,
-  type ChatSession
+  type ChatMessage
 } from "@/lib/chat-client";
 import {
   createChatPath,
@@ -63,7 +61,6 @@ export function ChatView(props: ChatViewProps) {
   const [composerValue, setComposerValue] = useState("");
   const [pendingInitialMessage, setPendingInitialMessage] = useState<string | null>(null);
   const [allowWebSearch, setAllowWebSearch] = useState(false);
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [loadState, setLoadState] = useState<ChatLoadState>("idle");
   const [loadedChatDataKey, setLoadedChatDataKey] = useState<string | null>(null);
@@ -129,12 +126,10 @@ export function ChatView(props: ChatViewProps) {
       return;
     }
 
-    const [nextSessions, nextConversation] = await Promise.all([
-      listChatSessions({ demoUserEmail: user.email }),
-      activeChatId ? getChatConversation(activeChatId, { demoUserEmail: user.email }) : Promise.resolve(null)
-    ]);
+    const nextConversation = activeChatId
+      ? await getChatConversation(activeChatId, { demoUserEmail: user.email })
+      : null;
 
-    setSessions(nextSessions);
     setConversation(nextConversation);
   }, [activeChatId, canViewRiskQueue, user.email]);
 
@@ -226,7 +221,6 @@ export function ChatView(props: ChatViewProps) {
       setLoadError(null);
 
       if (!canViewRiskQueue) {
-        setSessions([]);
         setConversation(null);
         setMessages([]);
         setLoadState("loaded");
@@ -235,16 +229,14 @@ export function ChatView(props: ChatViewProps) {
       }
 
       try {
-        const [nextSessions, nextConversation] = await Promise.all([
-          listChatSessions({ demoUserEmail: user.email }),
-          activeChatId ? getChatConversation(activeChatId, { demoUserEmail: user.email }) : Promise.resolve(null)
-        ]);
+        const nextConversation = activeChatId
+          ? await getChatConversation(activeChatId, { demoUserEmail: user.email })
+          : null;
 
         if (!isCurrent) {
           return;
         }
 
-        setSessions(nextSessions);
         setConversation(nextConversation);
 
         if (!hasInitialSendStarted(activeChatId, initialSendKeyRef.current)) {
@@ -423,8 +415,6 @@ export function ChatView(props: ChatViewProps) {
       ) : null}
 
       <div className="chat-layout">
-        <ChatHistoryPanel activeChatId={activeChatId} isLoading={isLoading} sessions={sessions} />
-
         <section aria-label="Case assistant workspace" className="panel chat-workspace">
           <div className="chat-workspace__summary">
             <strong>{currentTitle ?? (activeChatId ? `Chat ${activeChatId.slice(0, 8)}` : "New chat")}</strong>
@@ -480,6 +470,14 @@ function ChatPageHeader({
         ) : (
           <span className="status-text">Start a new assistant chat.</span>
         )}
+        <Link className="usa-button usa-button--outline" href="/chat/history">
+          Chat history
+        </Link>
+        {activeChatId ? (
+          <Link className="usa-button" href="/chat/new">
+            New chat
+          </Link>
+        ) : null}
       </div>
     </PageHeader>
   );

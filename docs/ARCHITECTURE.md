@@ -64,6 +64,8 @@ Next.js also owns model provider configuration for the assistant. The route uses
 
 The .NET API owns SQL persistence and the allowlisted read-only case query tools. Chat sessions, messages, tool calls, and pinned context items are stored in SQL Server. The assistant does not get arbitrary SQL access; case facts come through bounded endpoints for counts, case summaries, risk queue search, provider risk, and case aging.
 
+Chat history is managed outside the assistant workspace at `/chat/history`. That page lists saved conversations for the current demo user in a paginated USWDS table, while `/chat/new` and `/chat/[chatId]` reserve the primary workspace for the conversation and case context.
+
 The `/chat/new` page requests suggested analyst questions from `src/client/src/app/api/chat/suggestions/route.ts`. That route samples read-only case-count, provider-risk, case-aging, and risk-queue data from the .NET API, asks Gemini for four unique dataset-grounded prompts when a server-side Google key is configured, and falls back to a static curated prompt set if dataset sampling or generation fails.
 
 AI Elements `PromptInput` is not used directly in v1. Its generated component assumes a shadcn/Tailwind/Radix component stack, while this app is deliberately USWDS/Sass-first. The chat UI uses `CaseAssistantPromptInput` as a USWDS-native adapter: it keeps the federal form structure, label, textarea, hint, checkbox, and buttons, while adopting PromptInput-style message submission, Enter-to-submit with Shift+Enter newlines, auto-resizing, and status-aware send/stop behavior.
