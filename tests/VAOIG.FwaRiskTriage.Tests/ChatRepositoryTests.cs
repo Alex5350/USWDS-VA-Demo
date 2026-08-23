@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VAOIG.FwaRiskTriage.Infrastructure.Chat;
 using VAOIG.FwaRiskTriage.Domain.Entities;
 using VAOIG.FwaRiskTriage.Infrastructure.Data;
 
@@ -6,6 +7,38 @@ namespace VAOIG.FwaRiskTriage.Tests;
 
 public sealed class ChatRepositoryTests
 {
+    [Fact]
+    public async Task RepositoryOnlyReturnsSessionsForCurrentUser()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new EfChatRepository(dbContext);
+        var analystChatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var adminChatId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+        await repository.CreateSessionAsync(
+            analystChatId,
+            "demo.analyst@local",
+            "Analyst chat",
+            new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+        await repository.CreateSessionAsync(
+            adminChatId,
+            "demo.admin@local",
+            "Admin chat",
+            new DateTime(2026, 6, 3, 14, 1, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var sessions = await repository.ListSessionsAsync("demo.analyst@local", CancellationToken.None);
+        var adminConversation = await repository.GetConversationAsync(
+            adminChatId,
+            "demo.analyst@local",
+            CancellationToken.None);
+
+        var session = Assert.Single(sessions);
+        Assert.Equal(analystChatId, session.ChatId);
+        Assert.Null(adminConversation);
+    }
+
     [Fact]
     public async Task ChatEntitiesCanBePersistedWithRelationships()
     {

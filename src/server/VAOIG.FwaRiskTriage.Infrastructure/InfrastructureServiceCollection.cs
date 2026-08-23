@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VAOIG.FwaRiskTriage.Application.Chat;
 using VAOIG.FwaRiskTriage.Application.Cases;
 using VAOIG.FwaRiskTriage.Application.Audit;
 using VAOIG.FwaRiskTriage.Application.Dashboard;
 using VAOIG.FwaRiskTriage.Application.Reports;
 using VAOIG.FwaRiskTriage.Application.ReferenceData;
 using VAOIG.FwaRiskTriage.Application.Security;
+using VAOIG.FwaRiskTriage.Infrastructure.Chat;
 using VAOIG.FwaRiskTriage.Infrastructure.Data;
 using VAOIG.FwaRiskTriage.Infrastructure.Repositories;
 using VAOIG.FwaRiskTriage.Infrastructure.Reporting;
@@ -30,6 +32,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IReferenceDataRepository, EfReferenceDataRepository>();
         services.AddScoped<IAuditRepository, EfAuditRepository>();
         services.AddScoped<IDemoPermissionRepository, EfDemoPermissionRepository>();
+        services.AddScoped<IChatRepository, EfChatRepository>();
         services.AddScoped<EfRiskRuleRepository>();
 
         return services;
