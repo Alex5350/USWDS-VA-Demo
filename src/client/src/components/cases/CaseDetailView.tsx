@@ -32,12 +32,12 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
   const router = useRouter();
   const { user, hasPermission } = useDemoUser();
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
-  const [status, setStatus] = useState("New");
   const [noteText, setNoteText] = useState("");
   const [message, setMessage] = useState("Loading case detail.");
   const [noteError, setNoteError] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [escalationAction, setEscalationAction] = useState<EscalationAction | null>(null);
   const [escalationJustification, setEscalationJustification] = useState("");
   const [escalationError, setEscalationError] = useState("");
@@ -50,7 +50,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       const result = await getCaseDetail(caseId);
       if (isMounted) {
         setCaseDetail(result);
-        setStatus(result.status);
         setMessage("");
       }
     }
@@ -62,26 +61,29 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
     };
   }, [caseId]);
 
-  async function handleStatusSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleStatusChange(nextStatus: string) {
     if (!caseDetail || !hasPermission("CanChangeCaseStatus")) {
       return;
     }
 
-    if (status === "Escalated" && caseDetail.status !== "Escalated") {
-      openEscalationDialog("escalate");
+    if (nextStatus === caseDetail.status) {
       return;
     }
 
-    if (caseDetail.status === "Escalated" && status !== "Escalated") {
+    if (caseDetail.status === "Escalated" && nextStatus !== "Escalated") {
       openEscalationDialog("de-escalate");
       return;
     }
 
-    await updateCaseStatus(caseDetail.caseId, status);
-    setCaseDetail({ ...caseDetail, status });
-    setMessage(`Case status updated to ${status}.`);
+    setIsUpdatingStatus(true);
+    try {
+      await updateCaseStatus(caseDetail.caseId, nextStatus);
+      const refreshed = await getCaseDetail(caseDetail.caseId);
+      setCaseDetail(refreshed);
+      setMessage(`Case status changed to ${nextStatus}.`);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   }
 
   async function handleNoteSubmit(event: FormEvent<HTMLFormElement>) {
@@ -145,7 +147,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
 
       const refreshed = await getCaseDetail(caseDetail.caseId);
       setCaseDetail(refreshed);
-      setStatus(refreshed.status);
       setMessage(
         escalationAction === "escalate"
           ? "Case escalated with justification recorded."
@@ -211,11 +212,14 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       ) : null}
 
       {message ? (
-        <p className="status-text" aria-live="polite">
+        <p className="status-text status-text--live no-print" aria-live="polite">
           {message}
         </p>
       ) : null}
 
+      <CasePrintReport caseDetail={caseDetail} />
+
+      <div className="case-detail-screen page-stack">
       <section className="case-summary" aria-labelledby="case-summary-heading">
         <div>
           <h2 id="case-summary-heading">Case Summary</h2>
@@ -259,37 +263,72 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
           </dl>
         </div>
 
-        <div className="panel no-print">
+        <div className="panel workflow-panel no-print">
           <h2>Workflow Actions</h2>
           {!hasPermission("CanChangeCaseStatus") ? (
             <UsaAlert slim type="info">
               Current demo role can view case detail but cannot change status.
             </UsaAlert>
           ) : null}
-          <form onSubmit={handleStatusSubmit}>
-            <UsaFormGroup id="case-status" label="Case status">
-              <select
-                className="usa-select"
-                disabled={!hasPermission("CanChangeCaseStatus")}
-                id="case-status"
-                name="case-status"
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
+          <div className="workflow-current-status">
+            <span>Current status</span>
+            <UsaTag tone="blue">{caseDetail.status}</UsaTag>
+          </div>
+          <p className="workflow-help">
+            Status buttons save immediately. Escalation changes require a justification before they are saved.
+          </p>
+
+          <div className="workflow-action-group">
+            <h3>Review status</h3>
+            <div className="action-row workflow-button-row">
+              <UsaButton
+                disabled={
+                  !hasPermission("CanChangeCaseStatus") ||
+                  isUpdatingStatus ||
+                  caseDetail.status === "UnderReview" ||
+                  caseDetail.status === "Escalated"
+                }
+                type="button"
+                variant="outline"
+                onClick={() => void handleStatusChange("UnderReview")}
               >
-                <option>New</option>
-                <option>UnderReview</option>
-                <option disabled={!hasPermission("CanEscalateCase")}>Escalated</option>
-                <option disabled={!hasPermission("CanReferCase")}>Referred</option>
-                <option>Closed</option>
-              </select>
-            </UsaFormGroup>
-            <div className="action-row">
-              <UsaButton disabled={!hasPermission("CanChangeCaseStatus")} type="submit">
-                Update status
+                Mark under review
               </UsaButton>
-              <UsaButton type="button" variant="outline" onClick={() => window.print()}>
-                Print case
+              <UsaButton
+                disabled={
+                  !hasPermission("CanReferCase") ||
+                  isUpdatingStatus ||
+                  caseDetail.status === "Referred" ||
+                  caseDetail.status === "Escalated"
+                }
+                type="button"
+                variant="outline"
+                onClick={() => void handleStatusChange("Referred")}
+              >
+                Refer case
               </UsaButton>
+              <UsaButton
+                disabled={
+                  !hasPermission("CanChangeCaseStatus") ||
+                  isUpdatingStatus ||
+                  caseDetail.status === "Closed" ||
+                  caseDetail.status === "Escalated"
+                }
+                type="button"
+                variant="outline"
+                onClick={() => void handleStatusChange("Closed")}
+              >
+                Close case
+              </UsaButton>
+            </div>
+            {caseDetail.status === "Escalated" ? (
+              <p className="workflow-help">Use De-escalate before applying routine review-status changes.</p>
+            ) : null}
+          </div>
+
+          <div className="workflow-action-group">
+            <h3>Escalation</h3>
+            <div className="action-row workflow-button-row">
               <UsaButton
                 disabled={!hasPermission("CanEscalateCase") || caseDetail.status === "Escalated"}
                 type="button"
@@ -306,6 +345,15 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
               >
                 De-escalate
               </UsaButton>
+            </div>
+          </div>
+
+          <div className="workflow-action-group">
+            <h3>Record actions</h3>
+            <div className="action-row workflow-button-row">
+              <UsaButton type="button" variant="outline" onClick={() => window.print()}>
+                Print report
+              </UsaButton>
               {hasPermission("CanEditCase") ? (
                 <UsaButton href={`/cases/${caseDetail.caseId}/edit`} variant="outline">
                   Edit case
@@ -319,7 +367,7 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 Delete case
               </UsaButton>
             </div>
-          </form>
+          </div>
           {!hasPermission("CanDeleteCase") ? (
             <p className="status-text">Current demo role cannot delete case records.</p>
           ) : null}
@@ -429,7 +477,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setStatus(caseDetail.status);
                   setEscalationAction(null);
                 }}
               >
@@ -610,6 +657,220 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
           </ul>
         </div>
       </section>
+      </div>
     </div>
+  );
+}
+
+function CasePrintReport({ caseDetail }: { caseDetail: CaseDetail }) {
+  return (
+    <section className="case-print-report print-only" aria-label={`Printable report for Case ${caseDetail.caseId}`}>
+      <header className="case-print-report__header">
+        <div>
+          <p className="case-print-report__eyebrow">VA OIG FWA Risk Triage Demo</p>
+          <h1>Case {caseDetail.caseId} Review Report</h1>
+          <p>
+            Synthetic-data case report for analyst review. Risk indicators are review candidates, not determinations of
+            fraud, waste, abuse, or misconduct.
+          </p>
+        </div>
+        <dl>
+          <div>
+            <dt>Status</dt>
+            <dd>{caseDetail.status}</dd>
+          </div>
+          <div>
+            <dt>Risk level</dt>
+            <dd>{caseDetail.riskLevel}</dd>
+          </div>
+          <div>
+            <dt>Risk score</dt>
+            <dd>{caseDetail.riskScore}</dd>
+          </div>
+        </dl>
+      </header>
+
+      <section className="case-print-section" aria-labelledby="print-summary-heading">
+        <h2 id="print-summary-heading">Case Summary</h2>
+        <dl className="case-print-facts">
+          <div>
+            <dt>Case ID</dt>
+            <dd>{caseDetail.caseId}</dd>
+          </div>
+          <div>
+            <dt>Claim ID</dt>
+            <dd>{caseDetail.claimId}</dd>
+          </div>
+          <div>
+            <dt>Assigned to</dt>
+            <dd>{caseDetail.assignedTo ?? "Unassigned"}</dd>
+          </div>
+          <div>
+            <dt>Created</dt>
+            <dd>{formatDate(caseDetail.createdDate)}</dd>
+          </div>
+          <div>
+            <dt>Estimated questioned cost</dt>
+            <dd>{preciseCurrencyFormatter.format(caseDetail.estimatedQuestionedCost)}</dd>
+          </div>
+          <div>
+            <dt>Provider</dt>
+            <dd>{caseDetail.provider.providerName}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="case-print-section case-print-section-grid" aria-label="Claim and provider details">
+        <div>
+          <h2>Claim Details</h2>
+          <dl className="case-print-facts case-print-facts--compact">
+            <div>
+              <dt>Procedure</dt>
+              <dd>{caseDetail.claim.procedureCode}</dd>
+            </div>
+            <div>
+              <dt>Service date</dt>
+              <dd>{formatDate(caseDetail.claim.serviceDate)}</dd>
+            </div>
+            <div>
+              <dt>Submitted</dt>
+              <dd>{formatDate(caseDetail.claim.submittedDate)}</dd>
+            </div>
+            <div>
+              <dt>Paid</dt>
+              <dd>{formatDate(caseDetail.claim.paidDate)}</dd>
+            </div>
+            <div>
+              <dt>Claim amount</dt>
+              <dd>{preciseCurrencyFormatter.format(caseDetail.claim.claimAmount)}</dd>
+            </div>
+            <div>
+              <dt>Paid amount</dt>
+              <dd>{preciseCurrencyFormatter.format(caseDetail.claim.paidAmount)}</dd>
+            </div>
+            <div>
+              <dt>Claim status</dt>
+              <dd>{caseDetail.claim.claimStatus}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div>
+          <h2>Provider Details</h2>
+          <dl className="case-print-facts case-print-facts--compact">
+            <div>
+              <dt>Name</dt>
+              <dd>{caseDetail.provider.providerName}</dd>
+            </div>
+            <div>
+              <dt>NPI</dt>
+              <dd>{caseDetail.provider.npi}</dd>
+            </div>
+            <div>
+              <dt>Type</dt>
+              <dd>{caseDetail.provider.providerType}</dd>
+            </div>
+            <div>
+              <dt>State</dt>
+              <dd>{caseDetail.provider.state}</dd>
+            </div>
+            <div>
+              <dt>Risk tier</dt>
+              <dd>{caseDetail.provider.riskTier}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section className="case-print-section" aria-labelledby="print-authorization-heading">
+        <h2 id="print-authorization-heading">Authorization Details</h2>
+        {caseDetail.authorization ? (
+          <dl className="case-print-facts">
+            <div>
+              <dt>Authorization ID</dt>
+              <dd>{caseDetail.authorization.authorizationId}</dd>
+            </div>
+            <div>
+              <dt>Procedure</dt>
+              <dd>{caseDetail.authorization.procedureCode}</dd>
+            </div>
+            <div>
+              <dt>Date range</dt>
+              <dd>
+                {formatDate(caseDetail.authorization.startDate)} to {formatDate(caseDetail.authorization.endDate)}
+              </dd>
+            </div>
+            <div>
+              <dt>Authorized amount</dt>
+              <dd>{preciseCurrencyFormatter.format(caseDetail.authorization.authorizedAmount)}</dd>
+            </div>
+            <div>
+              <dt>Status</dt>
+              <dd>{caseDetail.authorization.status}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p>No matching authorization is attached to this synthetic claim.</p>
+        )}
+      </section>
+
+      <section className="case-print-section" aria-labelledby="print-findings-heading">
+        <h2 id="print-findings-heading">Explainable Risk Findings</h2>
+        <table className="case-print-table">
+          <caption>Risk rules that contributed to the case score</caption>
+          <thead>
+            <tr>
+              <th scope="col">Rule</th>
+              <th scope="col">Contribution</th>
+              <th scope="col">Explanation</th>
+            </tr>
+          </thead>
+          <tbody>
+            {caseDetail.riskFindings.map((finding) => (
+              <tr key={finding.riskFindingId}>
+                <th scope="row">
+                  {finding.ruleName}
+                  <span>{finding.ruleCode}</span>
+                </th>
+                <td>+{finding.scoreContribution}</td>
+                <td>{finding.explanation}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="case-print-section case-print-section-grid" aria-label="Complaints and notes">
+        <div>
+          <h2>Related Hotline Complaints</h2>
+          {caseDetail.complaints.length > 0 ? (
+            <ul className="case-print-list">
+              {caseDetail.complaints.map((complaint) => (
+                <li key={complaint.complaintId}>
+                  <strong>{complaint.complaintType}</strong> ({formatDate(complaint.receivedDate)}):{" "}
+                  {complaint.narrativeSummary} Status: {complaint.status}.
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No related synthetic hotline complaints are linked to this case.</p>
+          )}
+        </div>
+        <div>
+          <h2>Analyst Notes</h2>
+          {caseDetail.notes.length > 0 ? (
+            <ul className="case-print-list">
+              {caseDetail.notes.map((note) => (
+                <li key={note.noteId}>
+                  <strong>{note.createdBy}</strong> on {formatDate(note.createdDate)}: {note.noteText}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No case notes are recorded.</p>
+          )}
+        </div>
+      </section>
+    </section>
   );
 }
