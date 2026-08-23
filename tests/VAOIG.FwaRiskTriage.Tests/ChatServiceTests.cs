@@ -34,6 +34,98 @@ public sealed class ChatServiceTests
                 CancellationToken.None));
     }
 
+    [Fact]
+    public async Task AddMessageNormalizesRequestBeforeDelegation()
+    {
+        var repository = new FakeChatRepository();
+        var service = new ChatService(repository, new FixedClock());
+
+        await service.AddMessageAsync(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            " demo.analyst@local ",
+            new AddChatMessageRequest(" user ", " Hello analyst ", $" {Repeat("m", 120)} ", null, null, $" {Repeat("f", 60)} "),
+            CancellationToken.None);
+
+        Assert.NotNull(repository.AddedMessageRequest);
+        Assert.Equal("demo.analyst@local", repository.AddedMessageUserEmail);
+        Assert.Equal("user", repository.AddedMessageRequest.Role);
+        Assert.Equal("Hello analyst", repository.AddedMessageRequest.Content);
+        Assert.Equal(100, repository.AddedMessageRequest.Model?.Length);
+        Assert.Equal(50, repository.AddedMessageRequest.FinishReason?.Length);
+    }
+
+    [Fact]
+    public async Task AddMessageRejectsInvalidRole()
+    {
+        var service = new ChatService(new FakeChatRepository(), new FixedClock());
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddMessageAsync(
+                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                "demo.analyst@local",
+                new AddChatMessageRequest("auditor", "Hello analyst"),
+                CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AddToolCallNormalizesRequestBeforeDelegation()
+    {
+        var repository = new FakeChatRepository();
+        var service = new ChatService(repository, new FixedClock());
+
+        await service.AddToolCallAsync(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            " demo.analyst@local ",
+            new AddChatToolCallRequest(
+                1,
+                $" {Repeat("t", 120)} ",
+                $" {Repeat("s", 120)} ",
+                " { \"caseId\": 42 } ",
+                $" {Repeat("r", 2010)} ",
+                3,
+                120,
+                true,
+                $" {Repeat("e", 1010)} "),
+            CancellationToken.None);
+
+        Assert.NotNull(repository.AddedToolCallRequest);
+        Assert.Equal("demo.analyst@local", repository.AddedToolCallUserEmail);
+        Assert.Equal(100, repository.AddedToolCallRequest.ToolName.Length);
+        Assert.Equal(100, repository.AddedToolCallRequest.AllowedSurface.Length);
+        Assert.Equal("{ \"caseId\": 42 }", repository.AddedToolCallRequest.ArgumentsJson);
+        Assert.Equal(2000, repository.AddedToolCallRequest.ResultSummary?.Length);
+        Assert.Equal(1000, repository.AddedToolCallRequest.ErrorMessage?.Length);
+    }
+
+    [Fact]
+    public async Task AddContextItemNormalizesRequestBeforeDelegation()
+    {
+        var repository = new FakeChatRepository();
+        var service = new ChatService(repository, new FixedClock());
+
+        await service.AddContextItemAsync(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            " demo.analyst@local ",
+            new AddChatContextItemRequest(
+                1,
+                $" {Repeat("c", 60)} ",
+                $" {Repeat("e", 60)} ",
+                $" {Repeat("i", 120)} ",
+                $" {Repeat("l", 220)} ",
+                " { \"status\": \"Open\" } "),
+            CancellationToken.None);
+
+        Assert.NotNull(repository.AddedContextItemRequest);
+        Assert.Equal("demo.analyst@local", repository.AddedContextItemUserEmail);
+        Assert.Equal(50, repository.AddedContextItemRequest.ContextType.Length);
+        Assert.Equal(50, repository.AddedContextItemRequest.EntityType.Length);
+        Assert.Equal(100, repository.AddedContextItemRequest.EntityId?.Length);
+        Assert.Equal(200, repository.AddedContextItemRequest.Label?.Length);
+        Assert.Equal("{ \"status\": \"Open\" }", repository.AddedContextItemRequest.SnapshotJson);
+    }
+
+    private static string Repeat(string value, int count) => string.Concat(Enumerable.Repeat(value, count));
+
     private sealed class FixedClock : IClock
     {
         public DateTime UtcNow { get; } = new(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc);
@@ -42,6 +134,12 @@ public sealed class ChatServiceTests
     private sealed class FakeChatRepository : IChatRepository
     {
         public string? CreatedUserEmail { get; private set; }
+        public string? AddedMessageUserEmail { get; private set; }
+        public AddChatMessageRequest? AddedMessageRequest { get; private set; }
+        public string? AddedToolCallUserEmail { get; private set; }
+        public AddChatToolCallRequest? AddedToolCallRequest { get; private set; }
+        public string? AddedContextItemUserEmail { get; private set; }
+        public AddChatContextItemRequest? AddedContextItemRequest { get; private set; }
 
         public Task<ChatSessionDto> CreateSessionAsync(
             Guid publicId,
@@ -65,24 +163,36 @@ public sealed class ChatServiceTests
             string userEmail,
             AddChatMessageRequest request,
             DateTime createdAt,
-            CancellationToken cancellationToken) =>
-            Task.FromResult<ChatMessageDto?>(new ChatMessageDto(1, request.Role, request.Content, null, null, null, null, createdAt));
+            CancellationToken cancellationToken)
+        {
+            AddedMessageUserEmail = userEmail;
+            AddedMessageRequest = request;
+            return Task.FromResult<ChatMessageDto?>(new ChatMessageDto(1, request.Role, request.Content, null, null, null, null, createdAt));
+        }
 
         public Task<ChatToolCallDto?> AddToolCallAsync(
             Guid publicId,
             string userEmail,
             AddChatToolCallRequest request,
             DateTime createdAt,
-            CancellationToken cancellationToken) =>
-            Task.FromResult<ChatToolCallDto?>(null);
+            CancellationToken cancellationToken)
+        {
+            AddedToolCallUserEmail = userEmail;
+            AddedToolCallRequest = request;
+            return Task.FromResult<ChatToolCallDto?>(null);
+        }
 
         public Task<ChatContextItemDto?> AddContextItemAsync(
             Guid publicId,
             string userEmail,
             AddChatContextItemRequest request,
             DateTime createdAt,
-            CancellationToken cancellationToken) =>
-            Task.FromResult<ChatContextItemDto?>(null);
+            CancellationToken cancellationToken)
+        {
+            AddedContextItemUserEmail = userEmail;
+            AddedContextItemRequest = request;
+            return Task.FromResult<ChatContextItemDto?>(null);
+        }
 
         public Task<bool> DeleteContextItemAsync(Guid publicId, string userEmail, int contextItemId, CancellationToken cancellationToken) =>
             Task.FromResult(false);
