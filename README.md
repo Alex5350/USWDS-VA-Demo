@@ -240,6 +240,28 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
 
 Use Bun for frontend package management and scripts. Commit `src/client/bun.lock`. Do not commit `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`.
 
+## AI Chat Assistant
+
+The case assistant is available at `/chat`. Saved sessions reopen at `/chat/{guid}`. It answers questions about synthetic case records, risk queue rows, provider risk, and case aging through read-only tools.
+
+The streaming route runs in Next.js and uses the Vercel AI SDK with the direct Google Gemini provider. Set the Google key only for the Next server process; it must not use a `NEXT_PUBLIC_` prefix or be exposed to browser code.
+
+```text
+GOOGLE_GENERATIVE_AI_API_KEY=
+GOOGLE_GENERATIVE_AI_MODEL=gemini-3.1-flash-lite-preview
+```
+
+`GOOGLE_GENERATIVE_AI_MODEL` is optional unless you want to override the code default.
+
+Local run flow:
+
+1. Start SQL Server and apply the database schema or EF migrations.
+2. Start the .NET API from `src/server` with `dotnet run --project VAOIG.FwaRiskTriage.Api`.
+3. Start the frontend from `src/client` with `bun run dev`, making the Google variables available to that process. `src/client/.env.local` is ignored by git if you prefer a frontend-local env file.
+4. Open `http://localhost:3000/chat` and select a demo user role with risk queue access.
+
+The assistant uses synthetic data only. It does not determine fraud, does not write case records, does not run arbitrary SQL, and does not implement real web search in v1. The web-search checkbox records the request context but the assistant will answer from the conversation and allowlisted case tools only.
+
 ## Mock Authentication
 
 The demo uses lightweight mock authentication only. It is not production identity management.

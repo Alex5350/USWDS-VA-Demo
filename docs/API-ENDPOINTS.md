@@ -257,6 +257,61 @@ Policies:
 - Report views: authorized demo users
 - Exports: `CanExportReports`
 
+## AI Chat Assistant
+
+Next.js streaming route, served by the frontend app:
+
+```http
+POST /api/chat/{chatId}
+```
+
+Accepts AI SDK UI messages, validates them, persists the latest user message through the .NET API, streams a Google Gemini response, and persists the assistant message on finish. The Next server process requires `GOOGLE_GENERATIVE_AI_API_KEY`. The body may include `demoUserEmail` and `allowWebSearch`; v1 does not provide a real web-search tool.
+
+.NET chat persistence endpoints:
+
+```http
+POST /api/chat/sessions
+GET /api/chat/sessions
+GET /api/chat/sessions/{chatId}
+PATCH /api/chat/sessions/{chatId}
+POST /api/chat/sessions/{chatId}/messages
+POST /api/chat/sessions/{chatId}/tool-calls
+POST /api/chat/sessions/{chatId}/context
+DELETE /api/chat/sessions/{chatId}/context/{contextItemId}
+```
+
+Policy: `CanViewRiskQueue`
+
+`POST /api/chat/sessions` creates a session and accepts an optional `firstMessage`. `GET /api/chat/sessions` lists the current demo user's non-deleted sessions. `GET /api/chat/sessions/{chatId}` returns session metadata, messages, recent tool calls, and pinned context. `PATCH /api/chat/sessions/{chatId}` renames a session with `title` or soft-deletes it with `isDeleted: true`.
+
+Messages persist role, content, optional model metadata, token counts, finish reason, and `clientMessageId`. `clientMessageId` is an idempotency key within a chat session. Tool-call records capture the allowlisted surface, arguments, result summary, row count, duration, and sanitized errors. Context records pin auditable case context for the session.
+
+Read-only tool endpoints used by the assistant:
+
+```http
+POST /api/chat/tools/case-counts
+POST /api/chat/tools/risk-queue-search
+GET /api/chat/tools/cases/{caseId}/summary
+POST /api/chat/tools/provider-risk
+POST /api/chat/tools/case-aging
+```
+
+Policies:
+
+- Case counts and risk queue search: `CanViewRiskQueue`
+- Case summary: `CanViewCaseDetail`
+- Provider risk and case aging: `CanViewDashboard`
+
+Tool surfaces are bounded and read-only:
+
+- `case-counts`: grouped counts from active synthetic case records by status, risk level, priority, provider type, or assignee.
+- `risk-queue-search`: paginated synthetic risk queue search with filters and risk-score sorting.
+- `cases/{caseId}/summary`: compact summary for one active synthetic case record.
+- `provider-risk`: provider-level claim volume, high/critical risk counts, and estimated questioned cost.
+- `case-aging`: case aging buckets grouped by status.
+
+The assistant tools do not create notes, change statuses, delete cases, update providers, export data, run arbitrary SQL, or determine fraud.
+
 ## Security Context
 
 ```http

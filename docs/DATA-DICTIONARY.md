@@ -168,6 +168,72 @@ Analyst note.
 | CreatedDate | datetime2 | Note timestamp |
 | NoteText | nvarchar(max) | Synthetic note text |
 
+## ChatSessions
+
+Synthetic AI assistant conversation owned by one demo user.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| ChatSessionId | int | Primary key |
+| PublicId | uniqueidentifier | Public chat GUID used by `/chat/{guid}` and API routes |
+| UserEmail | nvarchar(200) | Demo user that owns the session |
+| Title | nvarchar(200) null | Optional display title, usually derived from the first message |
+| CreatedAt | datetime2 | UTC creation timestamp |
+| LastMessageAt | datetime2 null | Last persisted message timestamp |
+| IsDeleted | bit | Soft-delete flag for hiding a session from chat history |
+
+## ChatMessages
+
+Persisted chat message for a synthetic assistant session.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| ChatMessageId | int | Primary key |
+| ChatSessionId | int | FK to ChatSessions |
+| Role | nvarchar(20) | AI SDK role such as user or assistant |
+| Content | nvarchar(max) | Message text persisted from AI SDK UI message parts |
+| ClientMessageId | nvarchar(200) null | Idempotency key from the client; unique within a ChatSession |
+| Model | nvarchar(100) null | Provider model recorded for assistant messages |
+| PromptTokens | int null | Prompt/input token count when provided by the provider |
+| CompletionTokens | int null | Completion/output token count when provided by the provider |
+| FinishReason | nvarchar(50) null | AI SDK finish reason when available |
+| CreatedAt | datetime2 | UTC message timestamp |
+
+## ChatToolCalls
+
+Audit record for an allowlisted read-only assistant tool call.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| ChatToolCallId | int | Primary key |
+| ChatSessionId | int | FK to ChatSessions |
+| ChatMessageId | int null | Optional FK to ChatMessages in the same session |
+| ToolName | nvarchar(100) | Tool identifier, for example getCaseCounts or searchRiskQueue |
+| AllowedSurface | nvarchar(100) | Bounded data surface such as CaseFiles, RiskQueue, or Reports |
+| ArgumentsJson | nvarchar(max) | Serialized tool arguments |
+| ResultSummary | nvarchar(2000) null | Compact result summary for audit and UI display |
+| RowCount | int null | Number of rows returned when applicable |
+| DurationMs | int null | Tool execution duration in milliseconds |
+| Succeeded | bit | Whether the read-only tool call succeeded |
+| ErrorMessage | nvarchar(1000) null | Sanitized error message for failed tool calls |
+| CreatedAt | datetime2 | UTC tool-call timestamp |
+
+## ChatContextItems
+
+Pinned auditable context item for a synthetic assistant session.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| ChatContextItemId | int | Primary key |
+| ChatSessionId | int | FK to ChatSessions |
+| ChatMessageId | int null | Optional FK to ChatMessages in the same session |
+| ContextType | nvarchar(50) | Context category, such as pinned case context |
+| EntityType | nvarchar(50) | Source entity type, such as CaseFile or Provider |
+| EntityId | nvarchar(100) null | Source entity identifier when available |
+| Label | nvarchar(200) null | Short UI label for the context item |
+| SnapshotJson | nvarchar(max) null | Serialized synthetic data snapshot retained for auditability |
+| CreatedAt | datetime2 | UTC context-item timestamp |
+
 ## DemoUserPermissionOverrides
 
 Synthetic admin-managed permission overrides for fake demo users.

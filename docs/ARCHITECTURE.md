@@ -56,6 +56,22 @@ The UI should be HTML-first and accessible. USWDS wrappers should cover header, 
 
 Manual intake uses SQL-backed reference data for providers, states and territories, and procedure codes. Long provider names and procedure descriptions are rendered through searchable controls with wrapped detail text so the form remains readable on desktop and mobile layouts.
 
+## AI Chat Assistant
+
+The chat UI lives in Next.js at `/chat` and `/chat/[chatId]`. Next.js owns the Vercel AI SDK streaming route at `src/client/src/app/api/chat/[chatId]/route.ts`, validates AI SDK UI messages, calls `streamText`, and persists the stream with `toUIMessageStreamResponse({ originalMessages, onFinish })`.
+
+Next.js also owns model provider configuration for the assistant. The route uses `@ai-sdk/google` with `GOOGLE_GENERATIVE_AI_API_KEY` and `GOOGLE_GENERATIVE_AI_MODEL`, defaulting to `gemini-3.1-flash-lite-preview`. The key is server-only and must not be exposed through `NEXT_PUBLIC_` variables. Missing keys return a sanitized route error. Stream abort and stream errors are consumed through `consumeSseStream: consumeStream` via the local wrapper so errors can be logged without leaking provider details to the browser.
+
+The .NET API owns SQL persistence and the allowlisted read-only case query tools. Chat sessions, messages, tool calls, and pinned context items are stored in SQL Server. The assistant does not get arbitrary SQL access; case facts come through bounded endpoints for counts, case summaries, risk queue search, provider risk, and case aging.
+
+AI SDK Agents, subagents, and ToolLoopAgent are not used in v1. The business case is a simple case-record assistant with a small tool surface, so `streamText` plus explicit tools is enough and easier to audit.
+
+AI SDK Memory providers are also not used in v1. Conversation history and case context are SQL-backed so OIG demo context remains auditable and avoids provider-specific memory lock-in.
+
+AI SDK Transcription is not implemented in v1. Chat is text-only because audio upload would add retention, privacy, and accessibility concerns beyond this demo scope.
+
+Real web search is not implemented in v1. If the UI sends a web-search request flag, the assistant is instructed to say that web search is unavailable and to answer only from conversation history and read-only case tools.
+
 ## Database
 
 SQL Server is the primary data store.
