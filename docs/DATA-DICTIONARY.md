@@ -41,7 +41,7 @@ Reference table for U.S. states, District of Columbia, and U.S. territories.
 | --- | --- | --- |
 | Code | nvarchar(2) | Primary key, for example `VA`, `DC`, or `PR` |
 | Name | nvarchar(100) | Display name |
-| Type | nvarchar(50) | State, District, Territory, or Outlying Area |
+| Type | nvarchar(30) | State, District, Territory, or Outlying Area |
 | IsEnabled | bit | Enabled values are available for intake |
 
 ## ProcedureCodes
@@ -155,6 +155,10 @@ Analyst review case.
 | EstimatedQuestionedCost | decimal(18,2) | Estimate for review prioritization |
 | CreatedDate | datetime2 | Case created timestamp |
 | ClosedDate | datetime2 null | Closed timestamp |
+| IsDeleted | bit | Soft-delete flag; active queues, reports, and assistant tools filter deleted cases out |
+| DeletedAt | datetime2 null | Soft-delete timestamp |
+| DeletedBy | nvarchar(200) null | Demo user email that deleted the case |
+| DeleteReason | nvarchar(1000) null | Reason captured for recycle-bin auditability |
 
 ## CaseNotes
 
