@@ -177,7 +177,7 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
 
     setIsDeleting(true);
     await deleteCaseRecord(caseDetail.caseId);
-    router.push("/cases/recycle-bin");
+    router.push("/risk-queue");
   }
 
   if (!caseDetail) {
