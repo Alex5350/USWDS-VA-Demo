@@ -18,7 +18,6 @@ export function ChatMessageList({ messages, status }: ChatMessageListProps) {
     <section
       aria-busy={isWaiting}
       aria-labelledby="case-assistant-messages-heading"
-      aria-live={isWaiting ? "polite" : "off"}
       className="chat-message-list"
     >
       <div className="section-header-row chat-message-list__header">
@@ -47,7 +46,11 @@ export function ChatMessageList({ messages, status }: ChatMessageListProps) {
         </ol>
       )}
 
-      {isWaiting ? <p className="status-text chat-message-list__status">Assistant response in progress.</p> : null}
+      {isWaiting ? (
+        <p aria-live="polite" className="status-text chat-message-list__status" role="status">
+          Assistant response in progress.
+        </p>
+      ) : null}
     </section>
   );
 }

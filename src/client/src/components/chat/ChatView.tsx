@@ -17,7 +17,6 @@ import { ChatMessageList } from "@/components/chat/ChatMessageList";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { UsaAlert } from "@/components/uswds/UsaAlert";
 import {
-  addChatMessage,
   createChatSession,
   deleteChatContextItem,
   getChatAuthHeaders,
@@ -40,6 +39,8 @@ type ChatViewProps =
 
 const fallbackDemoUserEmail = "demo.readonly@local";
 
+type ChatLoadState = "idle" | "loading" | "loaded" | "error";
+
 export function ChatView(props: ChatViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,13 +48,15 @@ export function ChatView(props: ChatViewProps) {
   const canViewRiskQueue = hasPermission("CanViewRiskQueue");
   const activeChatId = props.mode === "existing" ? props.chatId : null;
   const initialMessage = props.mode === "existing" ? searchParams.get("initial") : null;
+  const chatDataKey = `${activeChatId ?? "new"}:${user.email}:${canViewRiskQueue}`;
   const initialSendKeyRef = useRef<string | null>(null);
 
   const [composerValue, setComposerValue] = useState("");
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadState, setLoadState] = useState<ChatLoadState>("idle");
+  const [loadedChatDataKey, setLoadedChatDataKey] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -64,26 +67,31 @@ export function ChatView(props: ChatViewProps) {
     [activeChatId, user.email]
   );
 
+  const refreshConversationArtifacts = useCallback(async () => {
+    if (!canViewRiskQueue) {
+      return;
+    }
+
+    const [nextSessions, nextConversation] = await Promise.all([
+      listChatSessions({ demoUserEmail: user.email }),
+      activeChatId ? getChatConversation(activeChatId, { demoUserEmail: user.email }) : Promise.resolve(null)
+    ]);
+
+    setSessions(nextSessions);
+    setConversation(nextConversation);
+  }, [activeChatId, canViewRiskQueue, user.email]);
+
   const handleChatFinish = useCallback<ChatOnFinishCallback<UIMessage>>(
-    ({ message, finishReason, isError }) => {
-      if (!activeChatId || isError) {
+    ({ isError }) => {
+      if (isError) {
         return;
       }
 
-      void persistAssistantMessage(activeChatId, user.email, message, finishReason)
-        .then(async () => {
-          const [nextConversation, nextSessions] = await Promise.all([
-            getChatConversation(activeChatId, { demoUserEmail: user.email }),
-            listChatSessions({ demoUserEmail: user.email })
-          ]);
-          setConversation(nextConversation);
-          setSessions(nextSessions);
-        })
-        .catch((error: unknown) => {
-          setActionError(getErrorMessage(error));
-        });
+      void refreshConversationArtifacts().catch((error: unknown) => {
+        setActionError(getErrorMessage(error));
+      });
     },
-    [activeChatId, user.email]
+    [refreshConversationArtifacts]
   );
 
   const { clearError, error, messages, sendMessage, setMessages, status, stop } = useChat<UIMessage>({
@@ -96,36 +104,6 @@ export function ChatView(props: ChatViewProps) {
     onFinish: handleChatFinish
   });
 
-  const loadChatData = useCallback(async () => {
-    if (!canViewRiskQueue) {
-      setSessions([]);
-      setConversation(null);
-      setMessages([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setLoadError(null);
-
-    try {
-      const [nextSessions, nextConversation] = await Promise.all([
-        listChatSessions({ demoUserEmail: user.email }),
-        activeChatId ? getChatConversation(activeChatId, { demoUserEmail: user.email }) : Promise.resolve(null)
-      ]);
-
-      setSessions(nextSessions);
-      setConversation(nextConversation);
-      setMessages(nextConversation ? toUIMessages(nextConversation.messages) : []);
-    } catch (error: unknown) {
-      setLoadError(getErrorMessage(error));
-      setConversation(null);
-      setMessages([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeChatId, canViewRiskQueue, setMessages, user.email]);
-
   const sendExistingMessage = useCallback(
     async (messageText: string) => {
       const trimmedMessage = messageText.trim();
@@ -136,16 +114,6 @@ export function ChatView(props: ChatViewProps) {
 
       setActionError(null);
       clearError();
-
-      await addChatMessage(
-        activeChatId,
-        {
-          role: "user",
-          content: trimmedMessage
-        },
-        { demoUserEmail: user.email }
-      );
-
       setComposerValue("");
 
       await sendMessage(
@@ -165,13 +133,88 @@ export function ChatView(props: ChatViewProps) {
   );
 
   useEffect(() => {
-    void loadChatData();
-  }, [loadChatData]);
+    let isCurrent = true;
+
+    async function loadInitialChatData() {
+      await Promise.resolve();
+
+      if (!isCurrent) {
+        return;
+      }
+
+      setLoadState("loading");
+      setLoadedChatDataKey(null);
+      setLoadError(null);
+
+      if (!canViewRiskQueue) {
+        setSessions([]);
+        setConversation(null);
+        setMessages([]);
+        setLoadState("loaded");
+        setLoadedChatDataKey(chatDataKey);
+        return;
+      }
+
+      try {
+        const [nextSessions, nextConversation] = await Promise.all([
+          listChatSessions({ demoUserEmail: user.email }),
+          activeChatId ? getChatConversation(activeChatId, { demoUserEmail: user.email }) : Promise.resolve(null)
+        ]);
+
+        if (!isCurrent) {
+          return;
+        }
+
+        setSessions(nextSessions);
+        setConversation(nextConversation);
+
+        if (!hasInitialSendStarted(activeChatId, initialSendKeyRef.current)) {
+          setMessages(nextConversation ? toUIMessages(nextConversation.messages) : []);
+        }
+
+        setLoadState("loaded");
+        setLoadedChatDataKey(chatDataKey);
+      } catch (error: unknown) {
+        if (!isCurrent) {
+          return;
+        }
+
+        setLoadError(getErrorMessage(error));
+        setConversation(null);
+        setMessages([]);
+        setLoadState("error");
+        setLoadedChatDataKey(null);
+      }
+    }
+
+    void loadInitialChatData();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeChatId, canViewRiskQueue, chatDataKey, setMessages, user.email]);
 
   useEffect(() => {
     const trimmedInitialMessage = initialMessage?.trim();
 
-    if (!activeChatId || !canViewRiskQueue || !trimmedInitialMessage || isLoading || loadError) {
+    if (
+      !activeChatId ||
+      !canViewRiskQueue ||
+      !trimmedInitialMessage ||
+      loadState !== "loaded" ||
+      loadedChatDataKey !== chatDataKey ||
+      loadError
+    ) {
+      return;
+    }
+
+    const nextPath = `/chat/${encodeURIComponent(activeChatId)}`;
+
+    if (
+      hasPersistedUserMessage(conversation, trimmedInitialMessage) ||
+      hasUIUserMessage(messages, trimmedInitialMessage)
+    ) {
+      router.replace(nextPath, { scroll: false });
       return;
     }
 
@@ -182,11 +225,23 @@ export function ChatView(props: ChatViewProps) {
     }
 
     initialSendKeyRef.current = sendKey;
-    router.replace(`/chat/${encodeURIComponent(activeChatId)}`, { scroll: false });
+    router.replace(nextPath, { scroll: false });
     void sendExistingMessage(trimmedInitialMessage).catch((error: unknown) => {
       setActionError(getErrorMessage(error));
     });
-  }, [activeChatId, canViewRiskQueue, initialMessage, isLoading, loadError, router, sendExistingMessage]);
+  }, [
+    activeChatId,
+    canViewRiskQueue,
+    conversation,
+    chatDataKey,
+    initialMessage,
+    loadedChatDataKey,
+    loadError,
+    loadState,
+    messages,
+    router,
+    sendExistingMessage
+  ]);
 
   const handleSubmit = useCallback(
     async (messageText: string) => {
@@ -272,6 +327,7 @@ export function ChatView(props: ChatViewProps) {
 
   const isChatBusy = status === "submitted" || status === "streaming";
   const isComposerBusy = isCreating || isChatBusy;
+  const isLoading = loadState === "idle" || loadState === "loading";
   const currentTitle = conversation?.session.title?.trim() || null;
   const visibleError = actionError ?? error?.message ?? null;
 
@@ -380,29 +436,6 @@ function getRequestDemoUserEmail(body: Record<string, unknown> | undefined, fall
   return candidate.length > 0 ? candidate : fallbackDemoUserEmail;
 }
 
-async function persistAssistantMessage(
-  chatId: string,
-  demoUserEmail: string,
-  message: UIMessage,
-  finishReason: string | undefined
-) {
-  const content = getUIMessageText(message).trim();
-
-  if (!content) {
-    return;
-  }
-
-  await addChatMessage(
-    chatId,
-    {
-      role: "assistant",
-      content,
-      finishReason: finishReason ?? null
-    },
-    { demoUserEmail }
-  );
-}
-
 function toUIMessages(messages: ChatMessage[]): UIMessage[] {
   return messages.flatMap((message) => {
     const role = toUIRole(message.role);
@@ -443,6 +476,32 @@ function getUIMessageText(message: UIMessage) {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("");
+}
+
+function hasPersistedUserMessage(conversation: ChatConversation | null, text: string) {
+  const normalizedText = normalizeMessageText(text);
+
+  return (
+    conversation?.messages.some(
+      (message) => message.role === "user" && normalizeMessageText(message.content) === normalizedText
+    ) ?? false
+  );
+}
+
+function hasUIUserMessage(messages: UIMessage[], text: string) {
+  const normalizedText = normalizeMessageText(text);
+
+  return messages.some(
+    (message) => message.role === "user" && normalizeMessageText(getUIMessageText(message)) === normalizedText
+  );
+}
+
+function hasInitialSendStarted(activeChatId: string | null, sendKey: string | null) {
+  return Boolean(activeChatId && sendKey?.startsWith(`${activeChatId}:`));
+}
+
+function normalizeMessageText(value: string) {
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function getStatusText(status: ChatStatus, isCreating: boolean, isLoading: boolean) {

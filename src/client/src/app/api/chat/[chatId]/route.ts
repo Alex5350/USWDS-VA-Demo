@@ -96,7 +96,11 @@ function getDemoUserEmail(bodyEmail: string | undefined, headerEmail: string | n
 }
 
 function stripMessageIds<TMessage extends UIMessage>(messages: TMessage[]): Array<Omit<TMessage, "id">> {
-  return messages.map(({ id: _id, ...message }) => message);
+  return messages.map((message) => {
+    const messageWithoutId = { ...message };
+    Reflect.deleteProperty(messageWithoutId, "id");
+    return messageWithoutId;
+  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
