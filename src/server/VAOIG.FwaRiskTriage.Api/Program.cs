@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using VAOIG.FwaRiskTriage.Api.Endpoints;
 using VAOIG.FwaRiskTriage.Api.Security;
 using VAOIG.FwaRiskTriage.Application.Cases;
+using VAOIG.FwaRiskTriage.Application.Chat;
 using VAOIG.FwaRiskTriage.Application.Common;
 using VAOIG.FwaRiskTriage.Application.Dashboard;
 using VAOIG.FwaRiskTriage.Application.Reports;
@@ -43,6 +44,7 @@ builder.Services.AddScoped<IDemoUserContext, HttpDemoUserContext>();
 builder.Services.AddScoped<IRiskScoringService, RiskScoringService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<CaseWorkflowService>();
+builder.Services.AddScoped<ChatService>();
 builder.Services.AddScoped<ReportExportService>();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -70,6 +72,7 @@ app.MapRiskRecordEndpoints();
 app.MapCaseEndpoints();
 app.MapRulesEndpoints();
 app.MapReportsEndpoints();
+app.MapChatEndpoints();
 app.MapSecurityEndpoints();
 
 app.Run();

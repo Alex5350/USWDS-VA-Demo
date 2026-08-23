@@ -4,3 +4,33 @@ GET {{VAOIG.FwaRiskTriage.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+POST {{VAOIG.FwaRiskTriage.Api_HostAddress}}/api/chat/sessions
+Accept: application/json
+Content-Type: application/json
+X-Demo-User: demo.analyst@local
+
+{
+  "firstMessage": "Show me the current high-risk queue."
+}
+
+###
+
+POST {{VAOIG.FwaRiskTriage.Api_HostAddress}}/api/chat/tools/case-counts
+Accept: application/json
+Content-Type: application/json
+X-Demo-User: demo.analyst@local
+
+{
+  "groupBy": "RiskLevel",
+  "fromDate": null,
+  "toDate": null,
+  "status": "Open",
+  "riskLevel": null,
+  "providerId": null,
+  "providerType": null,
+  "state": null,
+  "search": null
+}
+
+###
