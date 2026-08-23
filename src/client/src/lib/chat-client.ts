@@ -20,6 +20,7 @@ export type ChatMessage = {
   messageId: number;
   role: ChatRole;
   content: string;
+  clientMessageId: string | null;
   model: string | null;
   promptTokens: number | null;
   completionTokens: number | null;
@@ -66,6 +67,7 @@ export type CreateChatSessionRequest = {
 export type AddChatMessageRequest = {
   role: ChatRole;
   content: string;
+  clientMessageId?: string | null;
   model?: string | null;
   promptTokens?: number | null;
   completionTokens?: number | null;

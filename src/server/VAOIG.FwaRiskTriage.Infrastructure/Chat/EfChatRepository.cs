@@ -66,6 +66,7 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
                 x.ChatMessageId,
                 x.Role,
                 x.Content,
+                x.ClientMessageId,
                 x.Model,
                 x.PromptTokens,
                 x.CompletionTokens,
@@ -122,11 +123,25 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
             return null;
         }
 
+        if (request.ClientMessageId is not null)
+        {
+            var existingMessage = await FindMessageByClientMessageIdAsync(
+                session.ChatSessionId,
+                request.ClientMessageId,
+                cancellationToken);
+
+            if (existingMessage is not null)
+            {
+                return existingMessage;
+            }
+        }
+
         var message = new ChatMessage
         {
             ChatSessionId = session.ChatSessionId,
             Role = request.Role,
             Content = request.Content,
+            ClientMessageId = request.ClientMessageId,
             Model = request.Model,
             PromptTokens = request.PromptTokens,
             CompletionTokens = request.CompletionTokens,
@@ -136,7 +151,26 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
 
         session.LastMessageAt = createdAt;
         dbContext.ChatMessages.Add(message);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (request.ClientMessageId is not null)
+        {
+            dbContext.Entry(message).State = EntityState.Detached;
+            var existingMessage = await FindMessageByClientMessageIdAsync(
+                session.ChatSessionId,
+                request.ClientMessageId,
+                cancellationToken);
+
+            if (existingMessage is not null)
+            {
+                return existingMessage;
+            }
+
+            throw;
+        }
 
         return ToDto(message);
     }
@@ -301,6 +335,25 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
                 cancellationToken);
     }
 
+    private Task<ChatMessageDto?> FindMessageByClientMessageIdAsync(
+        int chatSessionId,
+        string clientMessageId,
+        CancellationToken cancellationToken) =>
+        dbContext.ChatMessages
+            .AsNoTracking()
+            .Where(x => x.ChatSessionId == chatSessionId && x.ClientMessageId == clientMessageId)
+            .Select(x => new ChatMessageDto(
+                x.ChatMessageId,
+                x.Role,
+                x.Content,
+                x.ClientMessageId,
+                x.Model,
+                x.PromptTokens,
+                x.CompletionTokens,
+                x.FinishReason,
+                x.CreatedAt))
+            .FirstOrDefaultAsync(cancellationToken);
+
     private static ChatSessionDto ToDto(ChatSession session) => new(
         session.PublicId,
         session.Title,
@@ -311,6 +364,7 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
         message.ChatMessageId,
         message.Role,
         message.Content,
+        message.ClientMessageId,
         message.Model,
         message.PromptTokens,
         message.CompletionTokens,

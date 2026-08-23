@@ -6,6 +6,7 @@ public sealed class ChatMessage
     public int ChatSessionId { get; set; }
     public string Role { get; set; } = "";
     public string Content { get; set; } = "";
+    public string? ClientMessageId { get; set; }
     public string? Model { get; set; }
     public int? PromptTokens { get; set; }
     public int? CompletionTokens { get; set; }

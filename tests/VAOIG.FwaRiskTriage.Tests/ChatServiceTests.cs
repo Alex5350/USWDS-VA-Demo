@@ -22,7 +22,7 @@ public sealed class ChatServiceTests
     }
 
     [Fact]
-    public async Task AddMessageRejectsEmptyContent()
+    public async Task AddMessageRejectsEmptyUserContent()
     {
         var service = new ChatService(new FakeChatRepository(), new FixedClock());
 
@@ -35,6 +35,26 @@ public sealed class ChatServiceTests
     }
 
     [Fact]
+    public async Task AddMessageAllowsEmptyAssistantContentAndNormalizesClientMessageId()
+    {
+        var repository = new FakeChatRepository();
+        var service = new ChatService(repository, new FixedClock());
+
+        await service.AddMessageAsync(
+            Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            " demo.analyst@local ",
+            new AddChatMessageRequest(" assistant ", " ", " model ", null, null, " stop ", $" {Repeat("c", 220)} "),
+            CancellationToken.None);
+
+        Assert.NotNull(repository.AddedMessageRequest);
+        Assert.Equal("assistant", repository.AddedMessageRequest.Role);
+        Assert.Equal("", repository.AddedMessageRequest.Content);
+        Assert.Equal("model", repository.AddedMessageRequest.Model);
+        Assert.Equal("stop", repository.AddedMessageRequest.FinishReason);
+        Assert.Equal(200, repository.AddedMessageRequest.ClientMessageId?.Length);
+    }
+
+    [Fact]
     public async Task AddMessageNormalizesRequestBeforeDelegation()
     {
         var repository = new FakeChatRepository();
@@ -43,7 +63,14 @@ public sealed class ChatServiceTests
         await service.AddMessageAsync(
             Guid.Parse("11111111-1111-1111-1111-111111111111"),
             " demo.analyst@local ",
-            new AddChatMessageRequest(" user ", " Hello analyst ", $" {Repeat("m", 120)} ", null, null, $" {Repeat("f", 60)} "),
+            new AddChatMessageRequest(
+                " user ",
+                " Hello analyst ",
+                $" {Repeat("m", 120)} ",
+                null,
+                null,
+                $" {Repeat("f", 60)} ",
+                " message-1 "),
             CancellationToken.None);
 
         Assert.NotNull(repository.AddedMessageRequest);
@@ -52,6 +79,7 @@ public sealed class ChatServiceTests
         Assert.Equal("Hello analyst", repository.AddedMessageRequest.Content);
         Assert.Equal(100, repository.AddedMessageRequest.Model?.Length);
         Assert.Equal(50, repository.AddedMessageRequest.FinishReason?.Length);
+        Assert.Equal("message-1", repository.AddedMessageRequest.ClientMessageId);
     }
 
     [Fact]
@@ -167,7 +195,8 @@ public sealed class ChatServiceTests
         {
             AddedMessageUserEmail = userEmail;
             AddedMessageRequest = request;
-            return Task.FromResult<ChatMessageDto?>(new ChatMessageDto(1, request.Role, request.Content, null, null, null, null, createdAt));
+            return Task.FromResult<ChatMessageDto?>(
+                new ChatMessageDto(1, request.Role, request.Content, request.ClientMessageId, null, null, null, null, createdAt));
         }
 
         public Task<ChatToolCallDto?> AddToolCallAsync(

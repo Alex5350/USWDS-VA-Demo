@@ -1,14 +1,26 @@
-import { convertToModelMessages, safeValidateUIMessages, streamText, type InferUITools, type UIMessage } from "ai";
+import {
+  consumeStream,
+  convertToModelMessages,
+  safeValidateUIMessages,
+  streamText,
+  type InferUITools,
+  type UIMessage
+} from "ai";
 import { NextResponse } from "next/server";
 
 import { createCaseAssistantOptions } from "./agent";
+import {
+  createAssistantMessageId,
+  persistAssistantResponseMessage,
+  persistLatestUserMessage,
+  type AssistantMessageMetadata
+} from "./persistence";
 import type { CaseAssistantTools } from "./tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const defaultDemoUserEmail = "demo.readonly@local";
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
 
 type ChatRouteContext = {
   params: Promise<{
@@ -23,17 +35,6 @@ type ChatRouteBody = {
 };
 
 type CaseAssistantUIMessage = UIMessage<unknown, never, InferUITools<CaseAssistantTools>>;
-
-type PersistedChatRole = "user" | "assistant";
-
-type PersistChatMessageRequest = {
-  role: PersistedChatRole;
-  content: string;
-  model?: string | null;
-  promptTokens?: number | null;
-  completionTokens?: number | null;
-  finishReason?: string | null;
-};
 
 export async function POST(request: Request, { params }: ChatRouteContext) {
   const { chatId } = await params;
@@ -84,86 +85,33 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     tools: options.tools,
     ignoreIncompleteToolCalls: true
   });
+  const assistantMessageId = createAssistantMessageId(getLatestUserMessageId(validatedMessages) ?? crypto.randomUUID());
+  let assistantMetadata: AssistantMessageMetadata = {};
 
   const result = streamText({
     ...options,
     messages: modelMessages,
-    onFinish: async (event) => {
-      const content = event.text.trim();
-
-      if (!content) {
-        return;
-      }
-
-      await persistChatMessage(chatId, demoUserEmail, {
-        role: "assistant",
-        content,
-        model: event.model.modelId,
-        promptTokens: event.usage.inputTokens ?? null,
-        completionTokens: event.usage.outputTokens ?? null,
+    onFinish: (event) => {
+      assistantMetadata = {
+        model: event.response.modelId ?? event.model.modelId,
+        promptTokens: event.totalUsage.inputTokens ?? null,
+        completionTokens: event.totalUsage.outputTokens ?? null,
         finishReason: event.finishReason
-      });
+      };
     }
   });
 
   return result.toUIMessageStreamResponse({
-    originalMessages: validatedMessages
-  });
-}
-
-async function persistLatestUserMessage(
-  chatId: string,
-  demoUserEmail: string,
-  messages: CaseAssistantUIMessage[]
-) {
-  const latestMessage = messages.at(-1);
-
-  if (latestMessage?.role !== "user") {
-    return;
-  }
-
-  const content = getTextPartContent(latestMessage.parts).trim();
-
-  if (!content) {
-    return;
-  }
-
-  await persistChatMessage(chatId, demoUserEmail, {
-    role: "user",
-    content,
-    model: null
-  });
-}
-
-async function persistChatMessage(chatId: string, demoUserEmail: string, request: PersistChatMessageRequest) {
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/chat/sessions/${encodeURIComponent(chatId)}/messages`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Demo-User": demoUserEmail
-      },
-      body: JSON.stringify(request)
-    });
-
-    if (!response.ok) {
-      throw createChatPersistenceError();
+    originalMessages: validatedMessages,
+    generateMessageId: () => assistantMessageId,
+    consumeSseStream: consumeStream,
+    onFinish: async ({ responseMessage, finishReason }) => {
+      await persistAssistantResponseMessage(chatId, demoUserEmail, responseMessage, {
+        ...assistantMetadata,
+        finishReason: assistantMetadata.finishReason ?? finishReason ?? null
+      });
     }
-  } catch {
-    throw createChatPersistenceError();
-  }
-}
-
-function createChatPersistenceError() {
-  return new Error("Unable to persist chat message.");
-}
-
-function getTextPartContent(parts: CaseAssistantUIMessage["parts"]) {
-  return parts
-    .filter((part) => part.type === "text")
-    .map((part) => part.text)
-    .join("");
+  });
 }
 
 async function readBody(request: Request): Promise<ChatRouteBody | Response> {
@@ -180,9 +128,7 @@ async function readBody(request: Request): Promise<ChatRouteBody | Response> {
 }
 
 function getDemoUserEmail(bodyEmail: string | undefined, headerEmail: string | null) {
-  const candidate = bodyEmail ?? headerEmail ?? defaultDemoUserEmail;
-  const normalized = candidate.trim();
-  return normalized.length > 0 ? normalized : defaultDemoUserEmail;
+  return normalizeOptional(headerEmail) ?? normalizeOptional(bodyEmail) ?? defaultDemoUserEmail;
 }
 
 function stripMessageIds<TMessage extends UIMessage>(messages: TMessage[]): Array<Omit<TMessage, "id">> {
@@ -195,4 +141,19 @@ function stripMessageIds<TMessage extends UIMessage>(messages: TMessage[]): Arra
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getLatestUserMessageId(messages: CaseAssistantUIMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") {
+      return messages[index].id;
+    }
+  }
+
+  return null;
+}
+
+function normalizeOptional(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }

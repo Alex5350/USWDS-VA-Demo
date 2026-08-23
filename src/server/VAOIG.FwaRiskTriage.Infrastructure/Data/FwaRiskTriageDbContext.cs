@@ -194,8 +194,10 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
             entity.HasKey(x => x.ChatMessageId);
             entity.HasAlternateKey(x => new { x.ChatSessionId, x.ChatMessageId });
             entity.HasIndex(x => new { x.ChatSessionId, x.CreatedAt });
+            entity.HasIndex(x => new { x.ChatSessionId, x.ClientMessageId }).IsUnique();
             entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Content).IsRequired();
+            entity.Property(x => x.ClientMessageId).HasMaxLength(200);
             entity.Property(x => x.Model).HasMaxLength(100);
             entity.Property(x => x.FinishReason).HasMaxLength(50);
         });

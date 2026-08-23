@@ -26,13 +26,22 @@ async function withFetchStub(handler: FetchHandler, run: () => Promise<void>) {
   }
 }
 
-async function createRequest(messages: unknown[], demoUserEmail = "demo.analyst@local") {
+async function createRequest(
+  messages: unknown[],
+  options: { demoUserEmail?: string; headerDemoUserEmail?: string } = {}
+) {
+  const headers = new Headers({ "Content-Type": "application/json" });
+
+  if (options.headerDemoUserEmail) {
+    headers.set("X-Demo-User", options.headerDemoUserEmail);
+  }
+
   return new Request("http://localhost/api/chat/session-1", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       messages,
-      demoUserEmail
+      demoUserEmail: options.demoUserEmail ?? "demo.analyst@local"
     })
   });
 }
@@ -90,8 +99,44 @@ await runTest("persists latest validated user message before streaming", async (
   assert.deepEqual(JSON.parse(String(calls[0]?.init?.body)), {
     role: "user",
     content: "How many open cases?",
-    model: null
+    model: null,
+    clientMessageId: "message-1"
   });
+});
+
+await runTest("prefers X-Demo-User header over body demo user for route persistence", async () => {
+  const calls: FetchCall[] = [];
+
+  await withFetchStub(
+    (input, init) => {
+      calls.push({ input, init });
+      return Response.json({ messageId: 101 });
+    },
+    async () => {
+      const response = await POST(
+        await createRequest(
+          [
+            {
+              id: "message-1",
+              role: "user",
+              parts: [{ type: "text", text: "Show risk queue" }]
+            }
+          ],
+          {
+            demoUserEmail: "demo.body@local",
+            headerDemoUserEmail: "demo.header@local"
+          }
+        ),
+        createContext()
+      );
+
+      assert.equal(response.status, 500);
+    }
+  );
+
+  assert.equal(calls.length, 1);
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("X-Demo-User"), "demo.header@local");
 });
 
 await runTest("returns generic error when chat message persistence fails", async () => {

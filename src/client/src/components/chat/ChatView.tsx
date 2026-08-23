@@ -446,7 +446,7 @@ function toUIMessages(messages: ChatMessage[]): UIMessage[] {
 
     return [
       {
-        id: `persisted-${message.messageId}`,
+        id: message.clientMessageId ?? `persisted-${message.messageId}`,
         role,
         parts: [
           {

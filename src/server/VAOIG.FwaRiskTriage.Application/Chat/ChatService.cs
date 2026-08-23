@@ -25,7 +25,9 @@ public sealed class ChatService(IChatRepository repository, IClock clock)
             throw new ArgumentException("Message role must be user, assistant, system, or tool.");
         }
 
-        var content = NormalizeRequired(request.Content, "Message content is required.", 20000);
+        var content = role is "assistant" or "tool"
+            ? NormalizeOptional(request.Content, 20000) ?? ""
+            : NormalizeRequired(request.Content, "Message content is required.", 20000);
         return repository.AddMessageAsync(
             publicId,
             NormalizeRequired(userEmail, "User email is required.", 200),
@@ -34,7 +36,8 @@ public sealed class ChatService(IChatRepository repository, IClock clock)
                 Role = role,
                 Content = content,
                 Model = NormalizeOptional(request.Model, 100),
-                FinishReason = NormalizeOptional(request.FinishReason, 50)
+                FinishReason = NormalizeOptional(request.FinishReason, 50),
+                ClientMessageId = NormalizeOptional(request.ClientMessageId, 200)
             },
             clock.UtcNow,
             cancellationToken);

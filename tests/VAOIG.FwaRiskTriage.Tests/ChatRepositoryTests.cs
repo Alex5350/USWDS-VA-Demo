@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VAOIG.FwaRiskTriage.Application.Chat;
 using VAOIG.FwaRiskTriage.Infrastructure.Chat;
 using VAOIG.FwaRiskTriage.Domain.Entities;
 using VAOIG.FwaRiskTriage.Infrastructure.Data;
@@ -103,6 +104,41 @@ public sealed class ChatRepositoryTests
     }
 
     [Fact]
+    public async Task AddMessageReturnsExistingMessageForDuplicateClientMessageId()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new EfChatRepository(dbContext);
+        var chatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        await repository.CreateSessionAsync(
+            chatId,
+            "demo.analyst@local",
+            "Open cases",
+            new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var first = await repository.AddMessageAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatMessageRequest("user", "First write", ClientMessageId: "message-1"),
+            new DateTime(2026, 6, 3, 14, 1, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+        var duplicate = await repository.AddMessageAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatMessageRequest("user", "Duplicate write", ClientMessageId: "message-1"),
+            new DateTime(2026, 6, 3, 14, 2, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        Assert.NotNull(first);
+        Assert.NotNull(duplicate);
+        Assert.Equal(first.MessageId, duplicate.MessageId);
+        Assert.Equal("First write", duplicate.Content);
+        Assert.Equal("message-1", duplicate.ClientMessageId);
+        Assert.Equal(1, await dbContext.ChatMessages.CountAsync());
+    }
+
+    [Fact]
     public void ChatSessionPublicIdHasUniqueIndex()
     {
         using var dbContext = CreateDbContext();
@@ -129,6 +165,24 @@ public sealed class ChatRepositoryTests
             HasProperties(key.Properties, nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ChatMessageId)));
 
         Assert.True(hasUniqueIndex || hasUniqueKey);
+    }
+
+    [Fact]
+    public void ChatMessagesHaveSessionScopedUniqueClientMessageId()
+    {
+        using var dbContext = CreateDbContext();
+
+        var entity = dbContext.Model.FindEntityType(typeof(ChatMessage));
+        Assert.NotNull(entity);
+
+        var clientMessageId = entity.FindProperty(nameof(ChatMessage.ClientMessageId));
+        Assert.NotNull(clientMessageId);
+        Assert.True(clientMessageId.IsNullable);
+        Assert.Equal(200, clientMessageId.GetMaxLength());
+
+        Assert.Contains(entity.GetIndexes(), index =>
+            index.IsUnique &&
+            HasProperties(index.Properties, nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ClientMessageId)));
     }
 
     [Fact]

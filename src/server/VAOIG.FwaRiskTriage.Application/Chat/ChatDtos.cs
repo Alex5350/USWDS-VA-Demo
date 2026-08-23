@@ -10,6 +10,7 @@ public sealed record ChatMessageDto(
     int MessageId,
     string Role,
     string Content,
+    string? ClientMessageId,
     string? Model,
     int? PromptTokens,
     int? CompletionTokens,
@@ -22,7 +23,8 @@ public sealed record AddChatMessageRequest(
     string? Model = null,
     int? PromptTokens = null,
     int? CompletionTokens = null,
-    string? FinishReason = null);
+    string? FinishReason = null,
+    string? ClientMessageId = null);
 
 public sealed record ChatToolCallDto(
     int ToolCallId,
