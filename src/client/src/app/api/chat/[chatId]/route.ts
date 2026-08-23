@@ -1,7 +1,8 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, safeValidateUIMessages, streamText, type InferUITools, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 
 import { createCaseAssistantOptions } from "./agent";
+import type { CaseAssistantTools } from "./tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -15,10 +16,12 @@ type ChatRouteContext = {
 };
 
 type ChatRouteBody = {
-  messages?: UIMessage[];
-  demoUserEmail?: string;
-  allowWebSearch?: boolean;
+  messages?: unknown;
+  demoUserEmail?: unknown;
+  allowWebSearch?: unknown;
 };
+
+type CaseAssistantUIMessage = UIMessage<unknown, never, InferUITools<CaseAssistantTools>>;
 
 export async function POST(request: Request, { params }: ChatRouteContext) {
   const { chatId } = await params;
@@ -26,6 +29,24 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
 
   if (body instanceof Response) {
     return body;
+  }
+
+  if (!Array.isArray(body.messages)) {
+    return NextResponse.json({ error: "Request body field 'messages' must be an array." }, { status: 400 });
+  }
+
+  const bodyDemoUserEmail = typeof body.demoUserEmail === "string" ? body.demoUserEmail : undefined;
+  const demoUserEmail = getDemoUserEmail(bodyDemoUserEmail, request.headers.get("X-Demo-User"));
+  const allowWebSearch = body.allowWebSearch === true;
+  const options = createCaseAssistantOptions(chatId, demoUserEmail, { allowWebSearch });
+
+  const validation = await safeValidateUIMessages<CaseAssistantUIMessage>({
+    messages: body.messages,
+    tools: options.tools
+  });
+
+  if (!validation.success) {
+    return NextResponse.json({ error: "Request body field 'messages' must contain valid UI messages." }, { status: 400 });
   }
 
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -38,16 +59,8 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     );
   }
 
-  if (body.messages !== undefined && !Array.isArray(body.messages)) {
-    return NextResponse.json({ error: "Request body field 'messages' must be an array when provided." }, { status: 400 });
-  }
-
-  const messages = body.messages ?? [];
-  const bodyDemoUserEmail = typeof body.demoUserEmail === "string" ? body.demoUserEmail : undefined;
-  const demoUserEmail = getDemoUserEmail(bodyDemoUserEmail, request.headers.get("X-Demo-User"));
-  const allowWebSearch = body.allowWebSearch === true;
-  const options = createCaseAssistantOptions(chatId, demoUserEmail, { allowWebSearch });
-  const messagesWithoutIds = stripMessageIds(messages);
+  const validatedMessages = validation.data;
+  const messagesWithoutIds = stripMessageIds(validatedMessages);
   const modelMessages = await convertToModelMessages(messagesWithoutIds, {
     tools: options.tools,
     ignoreIncompleteToolCalls: true
@@ -58,13 +71,19 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     messages: modelMessages
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    originalMessages: validatedMessages
+  });
 }
 
 async function readBody(request: Request): Promise<ChatRouteBody | Response> {
   try {
     const parsed = (await request.json()) as unknown;
-    return isRecord(parsed) ? (parsed as ChatRouteBody) : {};
+    if (!isRecord(parsed)) {
+      return NextResponse.json({ error: "Request body must be a JSON object." }, { status: 400 });
+    }
+
+    return parsed;
   } catch {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
   }
@@ -76,7 +95,7 @@ function getDemoUserEmail(bodyEmail: string | undefined, headerEmail: string | n
   return normalized.length > 0 ? normalized : defaultDemoUserEmail;
 }
 
-function stripMessageIds(messages: UIMessage[]): Array<Omit<UIMessage, "id">> {
+function stripMessageIds<TMessage extends UIMessage>(messages: TMessage[]): Array<Omit<TMessage, "id">> {
   return messages.map(({ id: _id, ...message }) => message);
 }
 

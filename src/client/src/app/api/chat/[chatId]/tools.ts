@@ -179,19 +179,10 @@ async function runLoggedTool<TResult>(
   const startedAt = Date.now();
   const argumentsJson = JSON.stringify(options.input);
 
+  let result: TResult;
+
   try {
-    const result = await options.run();
-    await logToolCall(context, {
-      toolName: options.toolName,
-      allowedSurface: options.allowedSurface,
-      argumentsJson,
-      resultSummary: options.summarize(result),
-      rowCount: options.rowCount(result),
-      durationMs: Date.now() - startedAt,
-      succeeded: true,
-      errorMessage: null
-    });
-    return result;
+    result = await options.run();
   } catch (error) {
     await tryLogToolFailure(context, {
       toolName: options.toolName,
@@ -201,6 +192,40 @@ async function runLoggedTool<TResult>(
       errorMessage: getErrorMessage(error)
     });
     throw error;
+  }
+
+  await tryLogToolSuccess(context, {
+    toolName: options.toolName,
+    allowedSurface: options.allowedSurface,
+    argumentsJson,
+    result,
+    summarize: options.summarize,
+    rowCount: options.rowCount,
+    durationMs: Date.now() - startedAt,
+    succeeded: true,
+    errorMessage: null
+  });
+
+  return result;
+}
+
+async function tryLogToolSuccess<TResult>(
+  context: ToolContext,
+  payload: Omit<ToolLogPayload, "resultSummary" | "rowCount"> & {
+    result: TResult;
+    summarize: (result: TResult) => string;
+    rowCount: (result: TResult) => number | null;
+  }
+) {
+  try {
+    const { result, summarize, rowCount, ...logPayload } = payload;
+    await logToolCall(context, {
+      ...logPayload,
+      resultSummary: summarize(result),
+      rowCount: rowCount(result)
+    });
+  } catch {
+    // Tool logging must not make a successful read-only tool call fail.
   }
 }
 
@@ -228,11 +253,15 @@ async function createDotnetError(response: Response, path: string) {
 }
 
 async function readErrorDetail(response: Response) {
+  if (response.status >= 500) {
+    return "";
+  }
+
   const contentType = response.headers.get("Content-Type")?.toLowerCase() ?? "";
   const text = await response.text();
   const trimmed = text.trim();
 
-  if (!trimmed || trimmed.length > 500) {
+  if (!trimmed) {
     return "";
   }
 
@@ -242,14 +271,24 @@ async function readErrorDetail(response: Response) {
       if (parsed && typeof parsed === "object") {
         const record = parsed as Record<string, unknown>;
         const detail = record.detail ?? record.title ?? record.message;
-        return typeof detail === "string" ? detail : "";
+        return sanitizeErrorDetail(typeof detail === "string" ? detail : "");
       }
     } catch {
       return "";
     }
   }
 
-  return /[<>{}\r\n]/.test(trimmed) ? "" : trimmed;
+  return sanitizeErrorDetail(trimmed);
+}
+
+function sanitizeErrorDetail(detail: string) {
+  const normalized = detail.trim();
+
+  if (!normalized || normalized.length > 300 || /[\u0000-\u001F\u007F]/.test(normalized) || /[<>{}]/.test(normalized)) {
+    return "";
+  }
+
+  return normalized;
 }
 
 function getErrorMessage(error: unknown) {
@@ -372,3 +411,5 @@ export function createCaseTools(context: ToolContext) {
     })
   };
 }
+
+export type CaseAssistantTools = ReturnType<typeof createCaseTools>;
