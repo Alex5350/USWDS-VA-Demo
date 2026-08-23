@@ -11,7 +11,7 @@ import { UsaPagination } from "@/components/uswds/UsaPagination";
 import { UsaTag } from "@/components/uswds/UsaTag";
 import { type PaginatedResponse, type RiskQueueFilters, type RiskQueueItem, getRiskQueue } from "@/lib/api-client";
 import { listToSentence } from "@/lib/accessibility";
-import { formatDate, numberFormatter, preciseCurrencyFormatter } from "@/lib/formatters";
+import { formatDate, preciseCurrencyFormatter } from "@/lib/formatters";
 
 const emptyQueue: PaginatedResponse<RiskQueueItem> = {
   items: [],
@@ -102,7 +102,6 @@ function RiskQueueContent({ filters, initialSortDirection }: RiskQueueContentPro
   const [draftFilters, setDraftFilters] = useState<RiskQueueFilters>(filters);
   const [sortDirection, setSortDirection] = useState(initialSortDirection);
   const [queue, setQueue] = useState<PaginatedResponse<RiskQueueItem>>(emptyQueue);
-  const [statusMessage, setStatusMessage] = useState("Loading risk queue.");
 
   function createQueueHref(nextFilters: RiskQueueFilters, nextSortDirection = sortDirection) {
     const params = new URLSearchParams();
@@ -136,12 +135,10 @@ function RiskQueueContent({ filters, initialSortDirection }: RiskQueueContentPro
     let isMounted = true;
 
     async function loadQueue() {
-      setStatusMessage("Loading risk queue.");
       const result = await getRiskQueue(filters);
 
       if (isMounted) {
         setQueue(result);
-        setStatusMessage(`${numberFormatter.format(result.totalItems)} review candidates loaded.`);
       }
     }
 
@@ -282,10 +279,6 @@ function RiskQueueContent({ filters, initialSortDirection }: RiskQueueContentPro
       </form>
 
       <div className="queue-results-toolbar">
-        <p className="status-text" aria-live="polite">
-          {statusMessage}
-        </p>
-
         <UsaFormGroup className="queue-sort-control" id="sort" label="Sort by risk score">
           <select
             className="usa-select"
