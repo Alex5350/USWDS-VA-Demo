@@ -52,6 +52,10 @@ docker-data/
 # Logs
 *.log
 logs/
+
+# Generated tool and agent work products
+outputs/
 .playwright-cli/
 .superpowers/
+superpowers/
 .worktrees/
