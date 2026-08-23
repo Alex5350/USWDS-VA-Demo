@@ -1109,15 +1109,17 @@ textarea {
 
 .chat-message--user .chat-message__card {
   width: min(100%, 42rem);
-  background: #eff8fb;
-  border-color: #b8dfe9;
+  background: #f1f8f4;
+  border-color: #78b985;
+  border-right: 0.3rem solid #2e7d32;
   box-shadow: none;
 }
 
 .chat-message--assistant .chat-message__card {
   background:
-    linear-gradient(180deg, #ffffff 0%, #ffffff 74%, #f7fbff 100%);
-  border-color: #b7cfe7;
+    linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  border-color: #6ea7d8;
+  border-left: 0.3rem solid var(--app-blue);
 }
 
 .chat-message--system .chat-message__card {
@@ -1135,13 +1137,13 @@ textarea {
 }
 
 .chat-message--user .chat-message__header {
-  background: #e5f5f8;
-  border-bottom-color: #c6e6ee;
+  background: #dff2e5;
+  border-bottom-color: #b7dfc0;
 }
 
 .chat-message--assistant .chat-message__header {
-  background: linear-gradient(90deg, #eaf3fb 0%, #ffffff 100%);
-  border-bottom-color: #c9daeb;
+  background: #e8f2fb;
+  border-bottom-color: #c2dbf1;
 }
 
 .chat-message__header h3 {
@@ -1152,6 +1154,14 @@ textarea {
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.chat-message--user .chat-message__header h3 {
+  color: #245f2d;
+}
+
+.chat-message--assistant .chat-message__header h3 {
+  color: var(--app-blue-dark);
 }
 
 .chat-message__body {
