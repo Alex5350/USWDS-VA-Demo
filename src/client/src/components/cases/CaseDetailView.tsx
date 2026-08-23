@@ -159,11 +159,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
           <Link className="usa-button usa-button--outline" href="/risk-queue">
             Back to risk queue
           </Link>
-          {hasPermission("CanDeleteCase") ? (
-            <Link className="usa-button usa-button--outline" href="/cases/recycle-bin">
-              Recycle bin
-            </Link>
-          ) : null}
         </div>
       ) : null}
 
