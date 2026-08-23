@@ -57,6 +57,14 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
   }
 
   const validatedMessages = validation.data;
+  const finalUserMessage = getFinalUserMessage(validatedMessages);
+
+  if (!finalUserMessage) {
+    return NextResponse.json(
+      { error: "Request body field 'messages' must end with a non-empty user message." },
+      { status: 400 }
+    );
+  }
 
   try {
     await persistLatestUserMessage(chatId, demoUserEmail, validatedMessages);
@@ -79,7 +87,7 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     tools: options.tools,
     ignoreIncompleteToolCalls: true
   });
-  const assistantMessageId = await createAssistantMessageId(getLatestUserMessageId(validatedMessages) ?? crypto.randomUUID());
+  const assistantMessageId = await createAssistantMessageId(finalUserMessage.id);
   let assistantMetadata: AssistantMessageMetadata = {};
 
   const result = streamText({
@@ -138,14 +146,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function getLatestUserMessageId(messages: CaseAssistantUIMessage[]) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    if (messages[index]?.role === "user") {
-      return messages[index].id;
-    }
+function getFinalUserMessage(messages: CaseAssistantUIMessage[]) {
+  const latestMessage = messages.at(-1);
+
+  if (latestMessage?.role !== "user") {
+    return null;
   }
 
-  return null;
+  const content = latestMessage.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("")
+    .trim();
+
+  return content ? latestMessage : null;
 }
 
 function normalizeOptional(value: string | null | undefined) {

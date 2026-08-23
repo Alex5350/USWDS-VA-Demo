@@ -62,6 +62,36 @@ async function runTest(name: string, run: () => Promise<void> | void) {
   }
 }
 
+await runTest("rejects assistant-only requests before persistence or streaming", async () => {
+  await assertRejectsInvalidFinalMessage([
+    {
+      id: "assistant-message-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "I already answered." }]
+    }
+  ]);
+});
+
+await runTest("rejects system-only requests before persistence or streaming", async () => {
+  await assertRejectsInvalidFinalMessage([
+    {
+      id: "system-message-1",
+      role: "system",
+      parts: [{ type: "text", text: "System setup." }]
+    }
+  ]);
+});
+
+await runTest("rejects empty final user messages before persistence or streaming", async () => {
+  await assertRejectsInvalidFinalMessage([
+    {
+      id: "message-1",
+      role: "user",
+      parts: [{ type: "text", text: "   " }]
+    }
+  ]);
+});
+
 await runTest("persists latest validated user message before streaming", async () => {
   const calls: FetchCall[] = [];
 
@@ -173,6 +203,26 @@ restoreEnv("GOOGLE_GENERATIVE_AI_API_KEY", originalGoogleApiKey);
 
 if (failures.length > 0) {
   assert.fail(failures.join("\n\n"));
+}
+
+async function assertRejectsInvalidFinalMessage(messages: unknown[]) {
+  const calls: FetchCall[] = [];
+
+  await withFetchStub(
+    (input, init) => {
+      calls.push({ input, init });
+      return Response.json({ messageId: 101 });
+    },
+    async () => {
+      const response = await POST(await createRequest(messages), createContext());
+
+      assert.equal(response.status, 400);
+      const body = (await response.json()) as { error?: string };
+      assert.equal(body.error, "Request body field 'messages' must end with a non-empty user message.");
+    }
+  );
+
+  assert.equal(calls.length, 0);
 }
 
 function restoreEnv(name: string, value: string | undefined) {

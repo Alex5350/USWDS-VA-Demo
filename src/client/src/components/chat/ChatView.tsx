@@ -7,7 +7,7 @@ import {
   type ChatStatus,
   type UIMessage
 } from "ai";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatComposer } from "@/components/chat/ChatComposer";
@@ -26,6 +26,11 @@ import {
   type ChatMessage,
   type ChatSession
 } from "@/lib/chat-client";
+import {
+  createChatPath,
+  storePendingInitialChatMessage,
+  takePendingInitialChatMessage
+} from "@/lib/chat-initial-message";
 import { useDemoUser } from "@/lib/demo-auth";
 
 type ChatViewProps =
@@ -43,15 +48,14 @@ type ChatLoadState = "idle" | "loading" | "loaded" | "error";
 
 export function ChatView(props: ChatViewProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, hasPermission } = useDemoUser();
   const canViewRiskQueue = hasPermission("CanViewRiskQueue");
   const activeChatId = props.mode === "existing" ? props.chatId : null;
-  const initialMessage = props.mode === "existing" ? searchParams.get("initial") : null;
   const chatDataKey = `${activeChatId ?? "new"}:${user.email}:${canViewRiskQueue}`;
   const initialSendKeyRef = useRef<string | null>(null);
 
   const [composerValue, setComposerValue] = useState("");
+  const [pendingInitialMessage, setPendingInitialMessage] = useState<string | null>(null);
   const [allowWebSearch, setAllowWebSearch] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
@@ -103,6 +107,28 @@ export function ChatView(props: ChatViewProps) {
     },
     onFinish: handleChatFinish
   });
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    initialSendKeyRef.current = null;
+
+    async function loadPendingInitialMessage() {
+      await Promise.resolve();
+
+      if (!isCurrent) {
+        return;
+      }
+
+      setPendingInitialMessage(activeChatId ? takePendingInitialChatMessage(activeChatId) : null);
+    }
+
+    void loadPendingInitialMessage();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeChatId]);
 
   const sendExistingMessage = useCallback(
     async (messageText: string) => {
@@ -195,7 +221,7 @@ export function ChatView(props: ChatViewProps) {
   }, [activeChatId, canViewRiskQueue, chatDataKey, setMessages, user.email]);
 
   useEffect(() => {
-    const trimmedInitialMessage = initialMessage?.trim();
+    const trimmedInitialMessage = pendingInitialMessage?.trim();
 
     if (
       !activeChatId ||
@@ -208,13 +234,10 @@ export function ChatView(props: ChatViewProps) {
       return;
     }
 
-    const nextPath = `/chat/${encodeURIComponent(activeChatId)}`;
-
     if (
       hasPersistedUserMessage(conversation, trimmedInitialMessage) ||
       hasUIUserMessage(messages, trimmedInitialMessage)
     ) {
-      router.replace(nextPath, { scroll: false });
       return;
     }
 
@@ -225,7 +248,6 @@ export function ChatView(props: ChatViewProps) {
     }
 
     initialSendKeyRef.current = sendKey;
-    router.replace(nextPath, { scroll: false });
     void sendExistingMessage(trimmedInitialMessage).catch((error: unknown) => {
       setActionError(getErrorMessage(error));
     });
@@ -234,12 +256,11 @@ export function ChatView(props: ChatViewProps) {
     canViewRiskQueue,
     conversation,
     chatDataKey,
-    initialMessage,
     loadedChatDataKey,
     loadError,
     loadState,
     messages,
-    router,
+    pendingInitialMessage,
     sendExistingMessage
   ]);
 
@@ -258,8 +279,9 @@ export function ChatView(props: ChatViewProps) {
 
         try {
           const session = await createChatSession(trimmedMessage, { demoUserEmail: user.email });
+          storePendingInitialChatMessage(session.chatId, trimmedMessage);
           setComposerValue("");
-          router.push(`/chat/${session.chatId}?initial=${encodeURIComponent(trimmedMessage)}`);
+          router.push(createChatPath(session.chatId));
         } catch (error: unknown) {
           setActionError(getErrorMessage(error));
         } finally {
