@@ -17,9 +17,9 @@ export function AppHeader() {
           <Image
             className="oig-brand__logo"
             src="/brand/va-header-logo.png"
-            alt="VA logo and Seal, U.S. Department of Veterans Affairs"
-            width={264}
-            height={59}
+            alt="VA logo and seal"
+            width={135}
+            height={57}
           />
           <span className="oig-brand__text">
             <span className="oig-brand__office">Office of Inspector General</span>

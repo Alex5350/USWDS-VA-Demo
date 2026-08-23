@@ -230,9 +230,10 @@ textarea {
 }
 
 .oig-brand {
-  display: grid;
-  gap: 0.65rem;
-  align-items: start;
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: center;
   min-width: 0;
   color: #ffffff;
   text-decoration: none;
@@ -244,19 +245,20 @@ textarea {
 
 .oig-brand__logo {
   display: block;
-  width: min(17.4rem, 100%);
+  width: 7.75rem;
   height: auto;
+  max-width: none;
 }
 
 .oig-brand__text {
   display: grid;
-  gap: 0.16rem;
+  gap: 0.12rem;
   min-width: 0;
 }
 
 .oig-brand__office {
   color: #ffffff;
-  font-size: 1.22rem;
+  font-size: 1.08rem;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.05;
@@ -264,7 +266,7 @@ textarea {
 
 .oig-brand__product {
   color: #f7d675;
-  font-size: 0.98rem;
+  font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.02em;
   line-height: 1.25;
@@ -1693,8 +1695,16 @@ textarea {
     width: min(100%, 29rem);
   }
 
+  .oig-brand__logo {
+    width: 8.45rem;
+  }
+
   .oig-brand__office {
-    font-size: 1.28rem;
+    font-size: 1.26rem;
+  }
+
+  .oig-brand__product {
+    font-size: 0.94rem;
   }
 
   .report-grid,
