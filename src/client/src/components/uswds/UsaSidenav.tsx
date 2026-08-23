@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
       { href: "/cases/recycle-bin", label: "Recycle bin", permission: "CanDeleteCase" }
     ]
   },
+  { href: "/chat/new", label: "Case assistant", permission: "CanViewRiskQueue" },
   { href: "/rules", label: "Rules", permission: "CanViewRiskQueue" },
   {
     href: "/reports",

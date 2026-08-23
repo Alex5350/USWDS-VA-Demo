@@ -8,6 +8,7 @@ import { useDemoUser } from "@/lib/demo-auth";
 
 export function AppHeader() {
   const { hasPermission } = useDemoUser();
+  const canViewRiskQueue = hasPermission("CanViewRiskQueue");
 
   return (
     <header className="oig-header" role="banner">
@@ -41,6 +42,13 @@ export function AppHeader() {
                   Risk queue
                 </Link>
               </li>
+              {canViewRiskQueue ? (
+                <li>
+                  <Link className="oig-nav__link" href="/chat/new">
+                    Case assistant
+                  </Link>
+                </li>
+              ) : null}
               <li>
                 <Link className="oig-nav__link" href="/reports">
                   Reports
