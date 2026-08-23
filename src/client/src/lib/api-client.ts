@@ -122,6 +122,7 @@ export type DeletedCaseRecord = {
 };
 
 export type UpdateCaseRecordRequest = {
+  status: string;
   assignedTo: string | null;
   priority: string;
   estimatedQuestionedCost: number;
@@ -822,6 +823,7 @@ export async function updateCaseRecord(caseId: number, request: UpdateCaseRecord
     `/api/cases/${caseId}`,
     {
       ...fallback,
+      status: request.status,
       assignedTo: request.assignedTo,
       priority: request.priority,
       estimatedQuestionedCost: request.estimatedQuestionedCost,

@@ -57,7 +57,11 @@ public sealed class CaseWorkflowTests
         public Task<CaseNoteDto> AddNoteAsync(int caseId, string noteText, string createdBy, DateTime createdDate, CancellationToken cancellationToken) =>
             Task.FromResult(new CaseNoteDto(1, caseId, createdBy, createdDate, noteText));
 
-        public Task<CaseDetailDto?> UpdateCaseRecordAsync(int caseId, UpdateCaseRecordRequest request, CancellationToken cancellationToken) =>
+        public Task<CaseDetailDto?> UpdateCaseRecordAsync(
+            int caseId,
+            UpdateCaseRecordRequest request,
+            DateTime changedAt,
+            CancellationToken cancellationToken) =>
             Task.FromResult<CaseDetailDto?>(null);
 
         public Task<bool> SoftDeleteCaseRecordAsync(

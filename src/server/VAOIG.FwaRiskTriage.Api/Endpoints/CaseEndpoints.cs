@@ -86,7 +86,43 @@ public static class CaseEndpoints
                 IClock clock,
                 CancellationToken cancellationToken) =>
             {
-                var updated = await repository.UpdateCaseRecordAsync(caseId, request, cancellationToken);
+                if (string.IsNullOrWhiteSpace(request.Status))
+                {
+                    return Results.BadRequest("Case status is required.");
+                }
+
+                var requestedStatus = request.Status.Trim();
+                var currentStatus = await repository.GetCaseStatusAsync(caseId, cancellationToken);
+                if (currentStatus is null)
+                {
+                    return Results.NotFound();
+                }
+
+                if (!string.Equals(currentStatus, requestedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!HasPermission(user, Policies.CanChangeCaseStatus))
+                    {
+                        return Results.Forbid();
+                    }
+
+                    if (string.Equals(requestedStatus, "Referred", StringComparison.OrdinalIgnoreCase)
+                        && !HasPermission(user, Policies.CanReferCase))
+                    {
+                        return Results.Forbid();
+                    }
+
+                    if (string.Equals(requestedStatus, "Escalated", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Results.BadRequest("Use the case escalation action and provide a justification.");
+                    }
+
+                    if (string.Equals(currentStatus, "Escalated", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return Results.BadRequest("Use the case de-escalation action and provide a justification.");
+                    }
+                }
+
+                var updated = await repository.UpdateCaseRecordAsync(caseId, request, clock.UtcNow, cancellationToken);
                 if (updated is null)
                 {
                     return Results.NotFound();
@@ -334,6 +370,9 @@ public static class CaseEndpoints
 
     private static string NormalizeAuditReason(string? reason) =>
         string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason.Trim();
+
+    private static bool HasPermission(ClaimsPrincipal user, string permission) =>
+        user.Claims.Any(claim => claim.Type == "permission" && string.Equals(claim.Value, permission, StringComparison.OrdinalIgnoreCase));
 
     private static string? GetDeletedByScope(ClaimsPrincipal user)
     {

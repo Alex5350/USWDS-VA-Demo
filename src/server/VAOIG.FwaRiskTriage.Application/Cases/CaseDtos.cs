@@ -71,6 +71,7 @@ public sealed record CaseWorkflowJustificationRequest(string Justification);
 public sealed record DeleteCaseRecordRequest(string? Reason);
 
 public sealed record UpdateCaseRecordRequest(
+    string Status,
     string? AssignedTo,
     string Priority,
     decimal EstimatedQuestionedCost,

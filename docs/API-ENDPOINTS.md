@@ -115,6 +115,7 @@ Returns claim, provider, authorization, risk findings, related hotline complaint
 
 ```json
 {
+  "status": "UnderReview",
   "assignedTo": "Demo Investigator",
   "priority": "Critical",
   "estimatedQuestionedCost": 1384.00,
@@ -127,6 +128,10 @@ Returns claim, provider, authorization, risk findings, related hotline complaint
   "claimStatus": "Paid"
 }
 ```
+
+Routine status changes through this edit endpoint require `CanChangeCaseStatus`. Setting `Referred` also requires
+`CanReferCase`. Escalation and de-escalation are rejected here because they must use the dedicated workflow endpoints
+below so a justification is saved with the record.
 
 `POST /api/cases/{caseId}/delete` deletes the synthetic case from the active queue and records an audit event. The implementation uses soft deletion, so it does not physically remove the linked synthetic claim, findings, or notes.
 

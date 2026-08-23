@@ -139,6 +139,7 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
     public async Task<CaseDetailDto?> UpdateCaseRecordAsync(
         int caseId,
         UpdateCaseRecordRequest request,
+        DateTime changedAt,
         CancellationToken cancellationToken)
     {
         var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
@@ -150,8 +151,10 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
         var claim = await dbContext.Claims.FirstAsync(x => x.ClaimId == caseFile.ClaimId, cancellationToken);
 
         caseFile.AssignedTo = string.IsNullOrWhiteSpace(request.AssignedTo) ? null : request.AssignedTo.Trim();
+        caseFile.Status = NormalizeCaseText(request.Status, caseFile.Status, 50);
         caseFile.Priority = NormalizeCaseText(request.Priority, "Medium", 50);
         caseFile.EstimatedQuestionedCost = Math.Max(0, request.EstimatedQuestionedCost);
+        caseFile.ClosedDate = string.Equals(caseFile.Status, "Closed", StringComparison.OrdinalIgnoreCase) ? changedAt : null;
 
         claim.ProcedureCode = NormalizeCaseText(request.ProcedureCode, claim.ProcedureCode, 20);
         claim.ServiceDate = request.ServiceDate;

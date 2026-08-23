@@ -7,7 +7,11 @@ public interface ICaseRepository
     Task<CaseDetailDto?> GetCaseDetailAsync(int caseId, CancellationToken cancellationToken);
     Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(string? deletedByScope, CancellationToken cancellationToken);
     Task<CaseNoteDto> AddNoteAsync(int caseId, string noteText, string createdBy, DateTime createdDate, CancellationToken cancellationToken);
-    Task<CaseDetailDto?> UpdateCaseRecordAsync(int caseId, UpdateCaseRecordRequest request, CancellationToken cancellationToken);
+    Task<CaseDetailDto?> UpdateCaseRecordAsync(
+        int caseId,
+        UpdateCaseRecordRequest request,
+        DateTime changedAt,
+        CancellationToken cancellationToken);
     Task<bool> SoftDeleteCaseRecordAsync(
         int caseId,
         string deletedBy,

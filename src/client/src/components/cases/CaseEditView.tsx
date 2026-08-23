@@ -15,6 +15,7 @@ type CaseEditViewProps = {
 };
 
 type CaseEditDraft = {
+  status: string;
   assignedTo: string;
   priority: string;
   estimatedQuestionedCost: string;
@@ -37,6 +38,7 @@ function toMoneyInputValue(value: number) {
 
 function createCaseEditDraft(caseDetail: CaseDetail): CaseEditDraft {
   return {
+    status: caseDetail.status,
     assignedTo: caseDetail.assignedTo ?? "",
     priority: caseDetail.priority,
     estimatedQuestionedCost: toMoneyInputValue(caseDetail.estimatedQuestionedCost),
@@ -101,7 +103,18 @@ export function CaseEditView({ caseId }: CaseEditViewProps) {
       return;
     }
 
+    if (editDraft.status === "Escalated" && caseDetail.status !== "Escalated") {
+      setError("Use the case detail Escalate action so the required justification is recorded.");
+      return;
+    }
+
+    if (caseDetail.status === "Escalated" && editDraft.status !== "Escalated") {
+      setError("Use the case detail De-escalate action so the required justification is recorded.");
+      return;
+    }
+
     const updated = await updateCaseRecord(caseDetail.caseId, {
+      status: editDraft.status,
       assignedTo: editDraft.assignedTo.trim() || null,
       priority: editDraft.priority,
       estimatedQuestionedCost,
@@ -168,7 +181,8 @@ export function CaseEditView({ caseId }: CaseEditViewProps) {
           {message}
         </p>
         <p className="status-text">
-          Update the editable case and claim fields. Provider and procedure-code reference data are managed from their
+          Update the editable case, status, and claim fields. Escalation changes still use the dedicated case detail
+          actions so a justification is saved. Provider and procedure-code reference data are managed from their
           administration pages.
         </p>
         {error ? (
@@ -178,6 +192,24 @@ export function CaseEditView({ caseId }: CaseEditViewProps) {
         ) : null}
         <form className="guided-form" onSubmit={handleSubmit}>
           <div className="guided-grid">
+            <UsaFormGroup id="edit-case-status" label="Case status">
+              <select
+                className="usa-select"
+                disabled={!hasPermission("CanChangeCaseStatus")}
+                id="edit-case-status"
+                value={editDraft.status}
+                onChange={(event) => setEditDraft({ ...editDraft, status: event.target.value })}
+              >
+                <option>New</option>
+                <option>UnderReview</option>
+                {caseDetail.status === "Escalated" ? <option>Escalated</option> : null}
+                <option disabled={!hasPermission("CanReferCase")}>Referred</option>
+                <option>Closed</option>
+              </select>
+              <p className="field-detail">
+                Escalated status is controlled by the Escalate and De-escalate actions on the case detail page.
+              </p>
+            </UsaFormGroup>
             <UsaFormGroup id="edit-assigned-to" label="Assigned to">
               <input
                 className="usa-input"
