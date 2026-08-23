@@ -53,3 +53,4 @@ docker-data/
 *.log
 logs/
 .playwright-cli/
+.superpowers/
