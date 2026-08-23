@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ReportWorkbenchView } from "@/components/reports/ReportWorkbenchView";
@@ -15,7 +16,9 @@ export default function ProviderRiskReportPage() {
         title="Provider Risk Report"
         description="Filter provider-level risk indicators, estimated questioned cost, claim volume, and critical case concentration."
       />
-      <ReportWorkbenchView kind="provider-risk" />
+      <Suspense fallback={<p className="status-text">Loading report filters.</p>}>
+        <ReportWorkbenchView kind="provider-risk" />
+      </Suspense>
     </div>
   );
 }

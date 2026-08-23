@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ReportWorkbenchView } from "@/components/reports/ReportWorkbenchView";
@@ -15,7 +16,9 @@ export default function ReportsPage() {
         title="Reporting Command Center"
         description="Filtered SQL-backed reporting with executive metrics, provider concentration, questioned cost trends, case aging, and CSV/PDF export actions."
       />
-      <ReportWorkbenchView kind="command-center" />
+      <Suspense fallback={<p className="status-text">Loading report filters.</p>}>
+        <ReportWorkbenchView kind="command-center" />
+      </Suspense>
     </div>
   );
 }

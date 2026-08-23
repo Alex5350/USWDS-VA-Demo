@@ -39,6 +39,7 @@ public sealed record ReportFilterQuery(
     DateOnly? FromDate,
     DateOnly? ToDate,
     string? Status,
+    string? RiskLevel,
     int? ProviderId,
     string? ProviderType,
     string? State,

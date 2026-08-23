@@ -24,6 +24,7 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
             WHERE (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
               AND (@Status IS NULL OR cf.Status = @Status)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
               AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
               AND (@State IS NULL OR p.State = @State)
@@ -59,8 +60,9 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
                     AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
                 LEFT JOIN CaseFiles cf ON cf.ClaimId = c.ClaimId
                     AND cf.IsDeleted = CAST(0 AS bit)
-                    AND (@Status IS NULL OR cf.Status = @Status)
                 WHERE (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
+                  AND (@Status IS NULL OR cf.Status = @Status)
+                  AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
                   AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
                   AND (@State IS NULL OR p.State = @State)
                   AND (@Search IS NULL OR p.ProviderName LIKE @Search)
@@ -74,6 +76,89 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
         var rows = await connection.QueryAsync<ProviderRiskSummaryDto>(
             new CommandDefinition(sql, CreateParameters(query), cancellationToken: cancellationToken));
         return rows.ToList();
+    }
+
+    public async Task<PagedResult<ProviderRiskSummaryDto>> GetProviderRiskPageAsync(
+        ReportFilterQuery query,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        const string dataSql = """
+            SELECT ProviderId, ProviderName, ProviderType, State, ClaimCount, TotalPaidAmount,
+                   HighRiskClaimCount, CriticalRiskClaimCount, EstimatedQuestionedCost, AverageRiskScore
+            FROM (
+                SELECT
+                    p.ProviderId,
+                    p.ProviderName,
+                    p.ProviderType,
+                    p.State,
+                    ClaimCount = COUNT(c.ClaimId),
+                    TotalPaidAmount = CAST(ISNULL(SUM(c.PaidAmount), 0) AS decimal(18,2)),
+                    HighRiskClaimCount = SUM(CASE WHEN cf.RiskLevel = N'High' THEN 1 ELSE 0 END),
+                    CriticalRiskClaimCount = SUM(CASE WHEN cf.RiskLevel = N'Critical' THEN 1 ELSE 0 END),
+                    EstimatedQuestionedCost = CAST(ISNULL(SUM(cf.EstimatedQuestionedCost), 0) AS decimal(18,2)),
+                    AverageRiskScore = CAST(ISNULL(AVG(CAST(cf.RiskScore AS decimal(18,2))), 0) AS decimal(18,1))
+                FROM Providers p
+                LEFT JOIN Claims c ON c.ProviderId = p.ProviderId
+                    AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
+                    AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
+                LEFT JOIN CaseFiles cf ON cf.ClaimId = c.ClaimId
+                    AND cf.IsDeleted = CAST(0 AS bit)
+                WHERE (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
+                  AND (@Status IS NULL OR cf.Status = @Status)
+                  AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+                  AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
+                  AND (@State IS NULL OR p.State = @State)
+                  AND (@Search IS NULL OR p.ProviderName LIKE @Search)
+                GROUP BY p.ProviderId, p.ProviderName, p.ProviderType, p.State
+            ) providerRisk
+            WHERE ClaimCount > 0 OR EstimatedQuestionedCost > 0
+            ORDER BY EstimatedQuestionedCost DESC, AverageRiskScore DESC, ProviderId ASC
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+            """;
+
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM (
+                SELECT
+                    p.ProviderId,
+                    ClaimCount = COUNT(c.ClaimId),
+                    EstimatedQuestionedCost = CAST(ISNULL(SUM(cf.EstimatedQuestionedCost), 0) AS decimal(18,2))
+                FROM Providers p
+                LEFT JOIN Claims c ON c.ProviderId = p.ProviderId
+                    AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
+                    AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
+                LEFT JOIN CaseFiles cf ON cf.ClaimId = c.ClaimId
+                    AND cf.IsDeleted = CAST(0 AS bit)
+                WHERE (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
+                  AND (@Status IS NULL OR cf.Status = @Status)
+                  AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
+                  AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
+                  AND (@State IS NULL OR p.State = @State)
+                  AND (@Search IS NULL OR p.ProviderName LIKE @Search)
+                GROUP BY p.ProviderId, p.ProviderName, p.ProviderType, p.State
+            ) providerRisk
+            WHERE ClaimCount > 0 OR EstimatedQuestionedCost > 0;
+            """;
+
+        var normalizedPage = Math.Max(page, 1);
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+        var parameters = CreateParameters(query);
+        parameters.Add("Offset", (normalizedPage - 1) * normalizedPageSize);
+        parameters.Add("PageSize", normalizedPageSize);
+
+        using var connection = connectionFactory.CreateConnection();
+        var rows = await connection.QueryAsync<ProviderRiskSummaryDto>(
+            new CommandDefinition(dataSql, parameters, cancellationToken: cancellationToken));
+        var count = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
+
+        return new PagedResult<ProviderRiskSummaryDto>(
+            rows.ToList(),
+            normalizedPage,
+            normalizedPageSize,
+            count);
     }
 
     public async Task<IReadOnlyList<QuestionedCostTrendDto>> GetQuestionedCostTrendAsync(ReportFilterQuery query, CancellationToken cancellationToken)
@@ -91,6 +176,7 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
             WHERE (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
               AND (@Status IS NULL OR cf.Status = @Status)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
               AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
               AND (@State IS NULL OR p.State = @State)
@@ -121,6 +207,7 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
               AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
               AND (@Status IS NULL OR cf.Status = @Status)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
               AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
               AND (@State IS NULL OR p.State = @State)
@@ -159,6 +246,7 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
               AND (@FromDate IS NULL OR c.ServiceDate >= @FromDate)
               AND (@ToDate IS NULL OR c.ServiceDate <= @ToDate)
               AND (@Status IS NULL OR cf.Status = @Status)
+              AND (@RiskLevel IS NULL OR cf.RiskLevel = @RiskLevel)
               AND (@ProviderId IS NULL OR p.ProviderId = @ProviderId)
               AND (@ProviderType IS NULL OR p.ProviderType = @ProviderType)
               AND (@State IS NULL OR p.State = @State)
@@ -175,16 +263,20 @@ public sealed class DapperReportRepository(SqlConnectionFactory connectionFactor
         return new PagedResult<RiskQueueItemDto>(items, 1, items.Count, items.Count);
     }
 
-    private static object CreateParameters(ReportFilterQuery query) => new
+    private static DynamicParameters CreateParameters(ReportFilterQuery query)
     {
-        FromDate = query.FromDate?.ToDateTime(TimeOnly.MinValue),
-        ToDate = query.ToDate?.ToDateTime(TimeOnly.MinValue),
-        Status = Normalize(query.Status),
-        query.ProviderId,
-        ProviderType = Normalize(query.ProviderType),
-        State = Normalize(query.State),
-        Search = string.IsNullOrWhiteSpace(query.Search) ? null : $"%{query.Search.Trim()}%"
-    };
+        var parameters = new DynamicParameters();
+        parameters.Add("FromDate", query.FromDate?.ToDateTime(TimeOnly.MinValue));
+        parameters.Add("ToDate", query.ToDate?.ToDateTime(TimeOnly.MinValue));
+        parameters.Add("Status", Normalize(query.Status));
+        parameters.Add("RiskLevel", Normalize(query.RiskLevel));
+        parameters.Add("ProviderId", query.ProviderId);
+        parameters.Add("ProviderType", Normalize(query.ProviderType));
+        parameters.Add("State", Normalize(query.State));
+        parameters.Add("Search", string.IsNullOrWhiteSpace(query.Search) ? null : $"%{query.Search.Trim()}%");
+
+        return parameters;
+    }
 
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) || string.Equals(value, "All", StringComparison.OrdinalIgnoreCase)

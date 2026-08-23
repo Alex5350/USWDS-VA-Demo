@@ -354,6 +354,7 @@ function RiskQueueContent({ filters, initialSortDirection }: RiskQueueContentPro
       </div>
 
       <UsaPagination
+        ariaLabel="Risk queue pagination"
         page={queue.page}
         pageSize={filters.pageSize ?? defaultRiskQueueFilters.pageSize}
         pageSizeOptions={pageSizeOptions}

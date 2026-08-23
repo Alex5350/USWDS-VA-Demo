@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 type UsaPaginationProps = {
+  ariaLabel?: string;
   page: number;
   pageSize?: number;
   pageSizeOptions?: number[];
@@ -30,6 +31,7 @@ function getVisiblePages(page: number, totalPages: number) {
 }
 
 export function UsaPagination({
+  ariaLabel = "Pagination",
   page,
   pageSize,
   pageSizeOptions,
@@ -75,7 +77,7 @@ export function UsaPagination({
   }
 
   return (
-    <nav className="app-pagination" aria-label="Risk queue pagination">
+    <nav className="app-pagination" aria-label={ariaLabel}>
       <div className="app-pagination__controls">
         <ul className="app-pagination__list">
           <li>

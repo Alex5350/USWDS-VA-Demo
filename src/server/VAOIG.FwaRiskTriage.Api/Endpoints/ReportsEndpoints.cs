@@ -14,6 +14,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -21,7 +22,7 @@ public static class ReportsEndpoints
                 IReportRepository repository,
                 CancellationToken cancellationToken) =>
                 TypedResults.Ok(await repository.GetReportSummaryAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken)))
             .RequireAuthorization(Policies.CanViewDashboard);
 
@@ -29,6 +30,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -36,7 +38,27 @@ public static class ReportsEndpoints
                 IReportRepository repository,
                 CancellationToken cancellationToken) =>
                 TypedResults.Ok(await repository.GetProviderRiskAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
+                    cancellationToken)))
+            .RequireAuthorization(Policies.CanViewDashboard);
+
+        group.MapGet("/provider-risk/details", async (
+                DateOnly? fromDate,
+                DateOnly? toDate,
+                string? status,
+                string? riskLevel,
+                int? providerId,
+                string? providerType,
+                string? state,
+                string? search,
+                int? page,
+                int? pageSize,
+                IReportRepository repository,
+                CancellationToken cancellationToken) =>
+                TypedResults.Ok(await repository.GetProviderRiskPageAsync(
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
+                    page ?? 1,
+                    pageSize ?? 5,
                     cancellationToken)))
             .RequireAuthorization(Policies.CanViewDashboard);
 
@@ -44,6 +66,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -51,7 +74,7 @@ public static class ReportsEndpoints
                 IReportRepository repository,
                 CancellationToken cancellationToken) =>
                 TypedResults.Ok(await repository.GetQuestionedCostTrendAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken)))
             .RequireAuthorization(Policies.CanViewDashboard);
 
@@ -59,6 +82,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -66,7 +90,7 @@ public static class ReportsEndpoints
                 IReportRepository repository,
                 CancellationToken cancellationToken) =>
                 TypedResults.Ok(await repository.GetCaseAgingAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken)))
             .RequireAuthorization(Policies.CanViewDashboard);
 
@@ -74,6 +98,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -83,7 +108,7 @@ public static class ReportsEndpoints
                 CancellationToken cancellationToken) =>
             {
                 var result = await repository.GetExportRiskQueueAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken);
                 var csv = exportService.ToRiskQueueCsv(result.Items);
                 return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", "risk-queue.csv");
@@ -94,6 +119,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -103,7 +129,7 @@ public static class ReportsEndpoints
                 CancellationToken cancellationToken) =>
             {
                 var result = await repository.GetProviderRiskAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken);
                 var csv = exportService.ToProviderRiskCsv(result);
                 return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", "provider-risk.csv");
@@ -114,6 +140,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -123,7 +150,7 @@ public static class ReportsEndpoints
                 CancellationToken cancellationToken) =>
             {
                 var result = await repository.GetQuestionedCostTrendAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken);
                 var csv = exportService.ToQuestionedCostTrendCsv(result);
                 return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", "questioned-cost-trend.csv");
@@ -134,6 +161,7 @@ public static class ReportsEndpoints
                 DateOnly? fromDate,
                 DateOnly? toDate,
                 string? status,
+                string? riskLevel,
                 int? providerId,
                 string? providerType,
                 string? state,
@@ -143,7 +171,7 @@ public static class ReportsEndpoints
                 CancellationToken cancellationToken) =>
             {
                 var result = await repository.GetCaseAgingAsync(
-                    CreateQuery(fromDate, toDate, status, providerId, providerType, state, search),
+                    CreateQuery(fromDate, toDate, status, riskLevel, providerId, providerType, state, search),
                     cancellationToken);
                 var csv = exportService.ToCaseAgingCsv(result);
                 return Results.File(Encoding.UTF8.GetBytes(csv), "text/csv", "case-aging.csv");
@@ -157,9 +185,10 @@ public static class ReportsEndpoints
         DateOnly? fromDate,
         DateOnly? toDate,
         string? status,
+        string? riskLevel,
         int? providerId,
         string? providerType,
         string? state,
         string? search) =>
-        new(fromDate, toDate, status, providerId, providerType, state, search);
+        new(fromDate, toDate, status, riskLevel, providerId, providerType, state, search);
 }

@@ -145,6 +145,7 @@ export type RiskRule = {
 };
 
 export type ProviderRiskSummary = {
+  providerId: number;
   providerName: string;
   providerType: string;
   state: string;
@@ -176,10 +177,13 @@ export type ReportFilters = {
   fromDate?: string;
   toDate?: string;
   status?: string;
+  riskLevel?: string;
   providerId?: number | string;
   providerType?: string;
   state?: string;
   search?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 export type ReportSummary = {
@@ -524,6 +528,7 @@ const mockRules: RiskRule[] = [
 
 const mockProviderRisk: ProviderRiskSummary[] = [
   {
+    providerId: 1,
     providerName: "Demo Community Dental Group",
     providerType: "Dental",
     state: "TX",
@@ -535,6 +540,7 @@ const mockProviderRisk: ProviderRiskSummary[] = [
     averageRiskScore: 64
   },
   {
+    providerId: 2,
     providerName: "Sample Regional Imaging LLC",
     providerType: "Imaging",
     state: "CA",
@@ -546,6 +552,7 @@ const mockProviderRisk: ProviderRiskSummary[] = [
     averageRiskScore: 61
   },
   {
+    providerId: 3,
     providerName: "Training Physical Therapy Partners",
     providerType: "Physical Therapy",
     state: "FL",
@@ -557,6 +564,7 @@ const mockProviderRisk: ProviderRiskSummary[] = [
     averageRiskScore: 56
   },
   {
+    providerId: 4,
     providerName: "Example Home Health Services",
     providerType: "Home Health",
     state: "OH",
@@ -729,6 +737,43 @@ function reportToQuery(filters: ReportFilters = {}) {
   });
 
   return params.toString();
+}
+
+function filterProviderRiskReport(filters: ReportFilters = {}) {
+  const normalizedSearch = filters.search?.trim().toLowerCase();
+  const providerId = filters.providerId === undefined || filters.providerId === "All" ? undefined : Number(filters.providerId);
+
+  return mockProviderRisk.filter((item) => {
+    const matchesProviderId = !providerId || item.providerId === providerId;
+    const matchesProviderType = !filters.providerType || filters.providerType === "All" || item.providerType === filters.providerType;
+    const matchesState = !filters.state || filters.state === "All" || item.state === filters.state;
+    const matchesSearch = !normalizedSearch || item.providerName.toLowerCase().includes(normalizedSearch);
+    const matchesRiskLevel =
+      !filters.riskLevel ||
+      filters.riskLevel === "All" ||
+      (filters.riskLevel === "Critical" && item.criticalRiskClaimCount > 0) ||
+      (filters.riskLevel === "High" && item.highRiskClaimCount > 0);
+
+    return matchesProviderId && matchesProviderType && matchesState && matchesSearch && matchesRiskLevel;
+  });
+}
+
+function paginateProviderRiskReport(filters: ReportFilters = {}) {
+  const page = filters.page ?? 1;
+  const pageSize = filters.pageSize ?? 5;
+  const filtered = filterProviderRiskReport(filters).toSorted(
+    (a, b) => b.estimatedQuestionedCost - a.estimatedQuestionedCost || b.averageRiskScore - a.averageRiskScore
+  );
+  const startIndex = (page - 1) * pageSize;
+  const items = filtered.slice(startIndex, startIndex + pageSize);
+
+  return {
+    items,
+    totalItems: filtered.length,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(filtered.length / pageSize))
+  };
 }
 
 async function requestCsv(path: string, fallback: Blob) {
@@ -1008,7 +1053,18 @@ export async function getReportSummary(filters: ReportFilters = {}) {
 
 export async function getProviderRiskReport(filters: ReportFilters = {}) {
   const query = reportToQuery(filters);
-  return requestJson<ProviderRiskSummary[]>(`/api/reports/provider-risk${query ? `?${query}` : ""}`, mockProviderRisk);
+  return requestJson<ProviderRiskSummary[]>(
+    `/api/reports/provider-risk${query ? `?${query}` : ""}`,
+    filterProviderRiskReport(filters)
+  );
+}
+
+export async function getProviderRiskReportPage(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  return requestJson<PaginatedResponse<ProviderRiskSummary>>(
+    `/api/reports/provider-risk/details${query ? `?${query}` : ""}`,
+    paginateProviderRiskReport(filters)
+  );
 }
 
 export async function getQuestionedCostTrend(filters: ReportFilters = {}) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
@@ -20,10 +21,12 @@ import { DownloadButton } from "@/components/layout/DownloadButton";
 import { RiskLevelTag } from "@/components/layout/RiskLevelTag";
 import { UsaButton } from "@/components/uswds/UsaButton";
 import { UsaFormGroup } from "@/components/uswds/UsaFormGroup";
+import { UsaPagination } from "@/components/uswds/UsaPagination";
 import { UsaTable } from "@/components/uswds/UsaTable";
 import { useDemoUser } from "@/lib/demo-auth";
 import {
   type CaseAging,
+  type PaginatedResponse,
   type Provider,
   type ProviderRiskSummary,
   type QuestionedCostTrend,
@@ -34,6 +37,7 @@ import {
   getCaseAgingReport,
   getProviderRiskCsv,
   getProviderRiskReport,
+  getProviderRiskReportPage,
   getProviders,
   getQuestionedCostTrend,
   getQuestionedCostTrendCsv,
@@ -65,10 +69,23 @@ const defaultFilters: ReportFilters = {
   fromDate: "2026-01-01",
   toDate: "2026-05-31",
   status: "All",
+  riskLevel: "All",
   providerId: "All",
   providerType: "All",
   state: "All",
-  search: ""
+  search: "",
+  page: 1,
+  pageSize: 5
+};
+
+const providerRiskDetailPageSizeOptions = [5, 10, 15, 20, 25, 50];
+
+const emptyProviderRiskPage: PaginatedResponse<ProviderRiskSummary> = {
+  items: [],
+  totalItems: 0,
+  page: 1,
+  pageSize: 5,
+  totalPages: 1
 };
 
 const emptySummary: ReportSummary = {
@@ -124,6 +141,30 @@ const reportMetadata: Record<ReportKind, { eyebrow: string; title: string; descr
     csvName: "case-aging-report.csv"
   }
 };
+
+type QueryReader = {
+  get(name: string): string | null;
+};
+
+function parsePositiveInt(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function filtersFromQuery(searchParams: QueryReader): ReportFilters {
+  return {
+    fromDate: searchParams.get("fromDate") ?? defaultFilters.fromDate,
+    toDate: searchParams.get("toDate") ?? defaultFilters.toDate,
+    status: searchParams.get("status") ?? defaultFilters.status,
+    riskLevel: searchParams.get("riskLevel") ?? defaultFilters.riskLevel,
+    providerId: searchParams.get("providerId") ?? defaultFilters.providerId,
+    providerType: searchParams.get("providerType") ?? defaultFilters.providerType,
+    state: searchParams.get("state") ?? defaultFilters.state,
+    search: searchParams.get("search") ?? defaultFilters.search,
+    page: parsePositiveInt(searchParams.get("page"), defaultFilters.page ?? 1),
+    pageSize: parsePositiveInt(searchParams.get("pageSize"), defaultFilters.pageSize ?? 5)
+  };
+}
 
 function toChartNumber(value: unknown) {
   const parsedValue = Array.isArray(value) ? Number(value[0]) : Number(value);
@@ -224,18 +265,57 @@ function ReportStat({ label, value, detail }: { label: string; value: string; de
 }
 
 export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
+  const searchParams = useSearchParams();
+  const filters = useMemo(() => filtersFromQuery(searchParams), [searchParams]);
+
+  return <ReportWorkbenchContent key={searchParams.toString()} kind={kind} filters={filters} />;
+}
+
+type ReportWorkbenchContentProps = ReportWorkbenchViewProps & {
+  filters: ReportFilters;
+};
+
+function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const metadata = reportMetadata[kind];
   const { hasPermission } = useDemoUser();
   const canExport = hasPermission("CanExportReports");
-  const [filters, setFilters] = useState<ReportFilters>(defaultFilters);
-  const [draftFilters, setDraftFilters] = useState<ReportFilters>(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState<ReportFilters>(filters);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [states, setStates] = useState<StateTerritory[]>([]);
   const [summary, setSummary] = useState<ReportSummary>(emptySummary);
   const [providerRisk, setProviderRisk] = useState<ProviderRiskSummary[]>([]);
+  const [providerRiskPage, setProviderRiskPage] = useState<PaginatedResponse<ProviderRiskSummary>>(emptyProviderRiskPage);
   const [trend, setTrend] = useState<QuestionedCostTrend[]>([]);
   const [aging, setAging] = useState<CaseAging[]>([]);
   const [statusMessage, setStatusMessage] = useState("Loading reporting data.");
+
+  function createReportHref(nextFilters: ReportFilters) {
+    const params = new URLSearchParams();
+    const page = nextFilters.page ?? defaultFilters.page ?? 1;
+    const pageSize = nextFilters.pageSize ?? defaultFilters.pageSize ?? 5;
+
+    params.set("page", String(page));
+    params.set("pageSize", String(pageSize));
+
+    ([
+      ["fromDate", nextFilters.fromDate, defaultFilters.fromDate],
+      ["toDate", nextFilters.toDate, defaultFilters.toDate],
+      ["status", nextFilters.status, defaultFilters.status],
+      ["riskLevel", nextFilters.riskLevel, defaultFilters.riskLevel],
+      ["providerId", nextFilters.providerId, defaultFilters.providerId],
+      ["providerType", nextFilters.providerType, defaultFilters.providerType],
+      ["state", nextFilters.state, defaultFilters.state],
+      ["search", nextFilters.search, defaultFilters.search]
+    ] as const).forEach(([key, value, defaultValue]) => {
+      if (value !== undefined && value !== "" && value !== defaultValue) {
+        params.set(key, String(value));
+      }
+    });
+
+    return `${pathname}?${params.toString()}`;
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -261,9 +341,10 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
 
     async function loadReports() {
       setStatusMessage("Loading reporting data.");
-      const [summaryResult, providerResult, trendResult, agingResult] = await Promise.all([
+      const [summaryResult, providerResult, providerPageResult, trendResult, agingResult] = await Promise.all([
         getReportSummary(activeFilters),
         getProviderRiskReport(activeFilters),
+        getProviderRiskReportPage(activeFilters),
         getQuestionedCostTrend(activeFilters),
         getCaseAgingReport(activeFilters)
       ]);
@@ -271,9 +352,12 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
       if (isMounted) {
         setSummary(summaryResult);
         setProviderRisk(providerResult);
+        setProviderRiskPage(providerPageResult);
         setTrend(trendResult);
         setAging(agingResult);
-        setStatusMessage("Reporting data loaded with current filters.");
+        setStatusMessage(
+          `Reporting data loaded with current filters. Detail table page ${providerPageResult.page} of ${providerPageResult.totalPages}.`
+        );
       }
     }
 
@@ -347,12 +431,18 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
 
   function resetFilters() {
     setDraftFilters(defaultFilters);
-    setFilters(defaultFilters);
+    router.push(createReportHref(defaultFilters));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFilters(draftFilters);
+    router.push(
+      createReportHref({
+        ...draftFilters,
+        page: 1,
+        pageSize: filters.pageSize ?? defaultFilters.pageSize
+      })
+    );
   }
 
   function exportPdf() {
@@ -394,6 +484,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <input
                 className="usa-input"
                 id="report-from-date"
+                name="fromDate"
                 type="date"
                 value={draftFilters.fromDate}
                 onChange={(event) => updateDraftFilter("fromDate", event.target.value)}
@@ -403,6 +494,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <input
                 className="usa-input"
                 id="report-to-date"
+                name="toDate"
                 type="date"
                 value={draftFilters.toDate}
                 onChange={(event) => updateDraftFilter("toDate", event.target.value)}
@@ -412,6 +504,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <select
                 className="usa-select"
                 id="report-status"
+                name="status"
                 value={draftFilters.status}
                 onChange={(event) => updateDraftFilter("status", event.target.value)}
               >
@@ -423,10 +516,26 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
                 <option>Closed</option>
               </select>
             </UsaFormGroup>
+            <UsaFormGroup id="report-risk-level" label="Risk level">
+              <select
+                className="usa-select"
+                id="report-risk-level"
+                name="riskLevel"
+                value={draftFilters.riskLevel}
+                onChange={(event) => updateDraftFilter("riskLevel", event.target.value)}
+              >
+                <option>All</option>
+                <option>Critical</option>
+                <option>High</option>
+                <option>Medium</option>
+                <option>Low</option>
+              </select>
+            </UsaFormGroup>
             <UsaFormGroup id="report-provider" label="Provider">
               <select
                 className="usa-select"
                 id="report-provider"
+                name="providerId"
                 value={draftFilters.providerId}
                 onChange={(event) => updateDraftFilter("providerId", event.target.value)}
               >
@@ -442,6 +551,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <select
                 className="usa-select"
                 id="report-provider-type"
+                name="providerType"
                 value={draftFilters.providerType}
                 onChange={(event) => updateDraftFilter("providerType", event.target.value)}
               >
@@ -455,6 +565,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <select
                 className="usa-select"
                 id="report-state"
+                name="state"
                 value={draftFilters.state}
                 onChange={(event) => updateDraftFilter("state", event.target.value)}
               >
@@ -470,6 +581,7 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
               <input
                 className="usa-input"
                 id="report-provider-search"
+                name="search"
                 type="search"
                 value={draftFilters.search}
                 onChange={(event) => updateDraftFilter("search", event.target.value)}
@@ -705,34 +817,46 @@ export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
             getRowKey={(row) => row.status}
           />
         ) : (
-          <UsaTable
-            caption="Provider risk report details"
-            columns={[
-              { key: "provider", header: "Provider", render: (row) => row.providerName },
-              { key: "type", header: "Type", render: (row) => row.providerType },
-              { key: "state", header: "State", render: (row) => row.state },
-              { key: "claims", header: "Claims", render: (row) => numberFormatter.format(row.claimCount) },
-              { key: "paid", header: "Total paid", render: (row) => currencyFormatter.format(row.totalPaidAmount) },
-              { key: "high", header: "High risk", render: (row) => numberFormatter.format(row.highRiskClaimCount) },
-              {
-                key: "critical",
-                header: "Critical risk",
-                render: (row) => numberFormatter.format(row.criticalRiskClaimCount)
-              },
-              {
-                key: "questioned",
-                header: "Estimated questioned cost",
-                render: (row) => currencyFormatter.format(row.estimatedQuestionedCost)
-              },
-              {
-                key: "average",
-                header: "Average risk score",
-                render: (row) => numberFormatter.format(row.averageRiskScore)
-              }
-            ]}
-            rows={providerRisk}
-            getRowKey={(row) => row.providerName}
-          />
+          <>
+            <UsaTable
+              caption="Provider risk report details"
+              columns={[
+                { key: "provider", header: "Provider", render: (row) => row.providerName },
+                { key: "type", header: "Type", render: (row) => row.providerType },
+                { key: "state", header: "State", render: (row) => row.state },
+                { key: "claims", header: "Claims", render: (row) => numberFormatter.format(row.claimCount) },
+                { key: "paid", header: "Total paid", render: (row) => currencyFormatter.format(row.totalPaidAmount) },
+                { key: "high", header: "High risk", render: (row) => numberFormatter.format(row.highRiskClaimCount) },
+                {
+                  key: "critical",
+                  header: "Critical risk",
+                  render: (row) => numberFormatter.format(row.criticalRiskClaimCount)
+                },
+                {
+                  key: "questioned",
+                  header: "Estimated questioned cost",
+                  render: (row) => currencyFormatter.format(row.estimatedQuestionedCost)
+                },
+                {
+                  key: "average",
+                  header: "Average risk score",
+                  render: (row) => numberFormatter.format(row.averageRiskScore)
+                }
+              ]}
+              rows={providerRiskPage.items}
+              getRowKey={(row) => String(row.providerId)}
+            />
+            <UsaPagination
+              ariaLabel="Report detail table pagination"
+              page={providerRiskPage.page}
+              pageSize={providerRiskPage.pageSize}
+              pageSizeOptions={providerRiskDetailPageSizeOptions}
+              totalItems={providerRiskPage.totalItems}
+              totalPages={providerRiskPage.totalPages}
+              getPageHref={(page) => createReportHref({ ...filters, page })}
+              onPageSizeChange={(pageSize) => router.push(createReportHref({ ...filters, page: 1, pageSize }))}
+            />
+          </>
         )}
       </section>
     </div>
