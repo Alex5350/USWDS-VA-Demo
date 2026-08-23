@@ -19,6 +19,10 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
     public DbSet<CaseNote> CaseNotes => Set<CaseNote>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<DemoUserPermissionOverride> DemoUserPermissionOverrides => Set<DemoUserPermissionOverride>();
+    public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatToolCall> ChatToolCalls => Set<ChatToolCall>();
+    public DbSet<ChatContextItem> ChatContextItems => Set<ChatContextItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -167,6 +171,59 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
             entity.Property(x => x.Email).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Permission).HasMaxLength(100).IsRequired();
             entity.Property(x => x.UpdatedBy).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<ChatSession>(entity =>
+        {
+            entity.ToTable("ChatSessions");
+            entity.HasKey(x => x.ChatSessionId);
+            entity.HasIndex(x => x.PublicId).IsUnique();
+            entity.HasIndex(x => new { x.UserEmail, x.IsDeleted, x.LastMessageAt });
+            entity.HasIndex(x => x.CreatedAt);
+            entity.Property(x => x.UserEmail).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200);
+            entity.Property(x => x.IsDeleted).HasDefaultValue(false);
+            entity.HasMany(x => x.Messages).WithOne().HasForeignKey(x => x.ChatSessionId);
+            entity.HasMany(x => x.ToolCalls).WithOne().HasForeignKey(x => x.ChatSessionId);
+            entity.HasMany(x => x.ContextItems).WithOne().HasForeignKey(x => x.ChatSessionId);
+        });
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.ToTable("ChatMessages");
+            entity.HasKey(x => x.ChatMessageId);
+            entity.HasIndex(x => new { x.ChatSessionId, x.CreatedAt });
+            entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Content).IsRequired();
+            entity.Property(x => x.Model).HasMaxLength(100);
+            entity.Property(x => x.FinishReason).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ChatToolCall>(entity =>
+        {
+            entity.ToTable("ChatToolCalls");
+            entity.HasKey(x => x.ChatToolCallId);
+            entity.HasIndex(x => new { x.ChatSessionId, x.CreatedAt });
+            entity.HasIndex(x => new { x.ToolName, x.CreatedAt });
+            entity.HasIndex(x => new { x.Succeeded, x.CreatedAt });
+            entity.Property(x => x.ToolName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AllowedSurface).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ArgumentsJson).IsRequired();
+            entity.Property(x => x.ErrorMessage).HasMaxLength(1000);
+            entity.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.ChatMessageId).IsRequired(false);
+        });
+
+        modelBuilder.Entity<ChatContextItem>(entity =>
+        {
+            entity.ToTable("ChatContextItems");
+            entity.HasKey(x => x.ChatContextItemId);
+            entity.HasIndex(x => new { x.ChatSessionId, x.ContextType, x.CreatedAt });
+            entity.HasIndex(x => new { x.EntityType, x.EntityId });
+            entity.Property(x => x.ContextType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.EntityId).HasMaxLength(100);
+            entity.Property(x => x.Label).HasMaxLength(200);
+            entity.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.ChatMessageId).IsRequired(false);
         });
     }
 }
