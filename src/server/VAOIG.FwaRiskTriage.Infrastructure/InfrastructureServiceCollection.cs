@@ -33,6 +33,7 @@ public static class InfrastructureServiceCollection
         services.AddScoped<IAuditRepository, EfAuditRepository>();
         services.AddScoped<IDemoPermissionRepository, EfDemoPermissionRepository>();
         services.AddScoped<IChatRepository, EfChatRepository>();
+        services.AddScoped<ICaseInsightTool, DapperCaseInsightTool>();
         services.AddScoped<EfRiskRuleRepository>();
 
         return services;
