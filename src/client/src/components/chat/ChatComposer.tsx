@@ -2,28 +2,34 @@
 
 import type { FormEvent } from "react";
 
+import { ChatSuggestions } from "@/components/chat/ChatSuggestions";
 import { UsaButton } from "@/components/uswds/UsaButton";
+import type { CaseAssistantSuggestion } from "@/lib/chat-suggestions";
 
 type ChatComposerProps = {
   value: string;
+  suggestions?: CaseAssistantSuggestion[];
   allowWebSearch: boolean;
   isBusy: boolean;
   canStop: boolean;
   disabled?: boolean;
   onValueChange: (value: string) => void;
   onAllowWebSearchChange: (checked: boolean) => void;
+  onSuggestionSelect?: (prompt: string) => void;
   onSubmit: (message: string) => void | Promise<void>;
   onStop: () => void | Promise<void>;
 };
 
 export function ChatComposer({
   value,
+  suggestions = [],
   allowWebSearch,
   isBusy,
   canStop,
   disabled = false,
   onValueChange,
   onAllowWebSearchChange,
+  onSuggestionSelect,
   onSubmit,
   onStop
 }: ChatComposerProps) {
@@ -43,6 +49,19 @@ export function ChatComposer({
 
   return (
     <form className="chat-composer usa-form" onSubmit={handleSubmit}>
+      <ChatSuggestions
+        disabled={isComposerDisabled}
+        onSelect={(prompt) => {
+          if (onSuggestionSelect) {
+            onSuggestionSelect(prompt);
+            return;
+          }
+
+          onValueChange(prompt);
+        }}
+        suggestions={suggestions}
+      />
+
       <div className="usa-form-group chat-composer__field">
         <label className="usa-label" htmlFor="case-assistant-message">
           Message the case assistant

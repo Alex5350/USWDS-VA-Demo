@@ -31,6 +31,7 @@ import {
   storePendingInitialChatMessage,
   takePendingInitialChatMessage
 } from "@/lib/chat-initial-message";
+import { getRandomCaseAssistantSuggestions } from "@/lib/chat-suggestions";
 import { useDemoUser } from "@/lib/demo-auth";
 
 type ChatViewProps =
@@ -68,6 +69,10 @@ export function ChatView(props: ChatViewProps) {
 
   const transport = useMemo(
     () => createTransport(activeChatId, user.email),
+    [activeChatId, user.email]
+  );
+  const suggestions = useMemo(
+    () => getRandomCaseAssistantSuggestions(`${user.email}:${activeChatId ?? "new"}`, 4),
     [activeChatId, user.email]
   );
 
@@ -387,7 +392,9 @@ export function ChatView(props: ChatViewProps) {
             onAllowWebSearchChange={setAllowWebSearch}
             onStop={handleStop}
             onSubmit={handleSubmit}
+            onSuggestionSelect={setComposerValue}
             onValueChange={setComposerValue}
+            suggestions={suggestions}
             value={composerValue}
           />
         </section>
