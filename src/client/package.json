@@ -11,12 +11,16 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.80",
+    "@ai-sdk/react": "^3.0.198",
     "@uswds/uswds": "^3.13.0",
+    "ai": "^6.0.196",
     "next": "^16.2.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1",
-    "sass": "^1.100.0"
+    "sass": "^1.100.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
