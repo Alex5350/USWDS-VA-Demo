@@ -7,7 +7,6 @@ import {
   type ChatStatus,
   type UIMessage
 } from "ai";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -470,14 +469,6 @@ function ChatPageHeader({
         ) : (
           <span className="status-text">Start a new assistant chat.</span>
         )}
-        <Link className="usa-button usa-button--outline" href="/chat/history">
-          Chat history
-        </Link>
-        {activeChatId ? (
-          <Link className="usa-button" href="/chat/new">
-            New chat
-          </Link>
-        ) : null}
       </div>
     </PageHeader>
   );

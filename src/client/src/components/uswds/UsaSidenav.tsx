@@ -4,47 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useDemoUser } from "@/lib/demo-auth";
-
-type NavItem = {
-  href: string;
-  label: string;
-  permission: string | null;
-  children?: NavItem[];
-};
-
-const navItems: NavItem[] = [
-  { href: "/", label: "Home", permission: null },
-  { href: "/dashboard", label: "Executive dashboard", permission: "CanViewDashboard" },
-  {
-    href: "/risk-queue",
-    label: "Risk queue",
-    permission: "CanViewRiskQueue",
-    children: [
-      { href: "/cases/new", label: "Create case record", permission: "CanCreateCaseRecord" },
-      { href: "/cases/recycle-bin", label: "Recycle bin", permission: "CanDeleteCase" }
-    ]
-  },
-  {
-    href: "/chat/new",
-    label: "Case assistant",
-    permission: "CanViewRiskQueue",
-    children: [{ href: "/chat/history", label: "Chat history", permission: "CanViewRiskQueue" }]
-  },
-  { href: "/rules", label: "Rules", permission: "CanViewRiskQueue" },
-  {
-    href: "/reports",
-    label: "Reports",
-    permission: "CanViewDashboard",
-    children: [
-      { href: "/reports/provider-risk", label: "Provider risk", permission: "CanViewDashboard" },
-      { href: "/reports/questioned-cost", label: "Questioned cost", permission: "CanViewDashboard" },
-      { href: "/reports/case-aging", label: "Case aging", permission: "CanViewDashboard" }
-    ]
-  },
-  { href: "/admin/providers", label: "Provider admin", permission: "CanManageProviders" },
-  { href: "/admin/procedure-codes", label: "Procedure code admin", permission: "CanManageProcedureCodes" },
-  { href: "/admin/security", label: "Admin security", permission: "CanViewAdmin" }
-];
+import { navItems, type NavItem } from "@/lib/navigation";
 
 export function UsaSidenav() {
   const pathname = usePathname();
@@ -57,7 +17,7 @@ export function UsaSidenav() {
       <ul className="usa-sidenav">
         {visibleItems.map((item) => {
           const visibleChildren = item.children?.filter(hasAccess) ?? [];
-          const isCurrent = pathname === item.href;
+          const isCurrent = pathname === item.href || visibleChildren.some((child) => pathname === child.href);
 
           return (
             <li className="usa-sidenav__item" key={item.href}>
