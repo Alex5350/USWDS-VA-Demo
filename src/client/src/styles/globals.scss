@@ -218,7 +218,7 @@ textarea {
 
 .oig-header__rule {
   height: 0.35rem;
-  background: linear-gradient(90deg, #b50909 0 32%, #ffffff 32% 35%, #ffbe2e 35% 64%, #ffffff 64% 67%, #2e8540 67%);
+  background: var(--app-red);
 }
 
 .oig-header__inner {
