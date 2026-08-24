@@ -10,15 +10,36 @@ This demo uses synthetic data only. It does not contain real veteran, patient, c
 
 ## Screenshots
 
-Screenshot placeholders for the public demo:
+Captured from the running client (real browser, keyboard-verified pages) with its
+embedded offline dataset, the same interface you get from `bun run dev` alone:
 
-- Dashboard executive summary
-- Risk queue with filters
-- Create case record intake with searchable reference data
-- Case detail with explainable risk findings
-- Reporting command center with filtered executive summaries, provider concentration, questioned-cost trends, case aging, CSV exports, and print-to-PDF output
-- Provider/procedure-code administration pages
-- Admin security page showing mock authorization, permission overrides, and audit events
+| Executive dashboard | Risk queue with filters |
+|:---:|:---:|
+| ![Dashboard](docs/screenshots/shot-dashboard.png) | ![Risk queue](docs/screenshots/shot-risk-queue.png) |
+
+| Case detail with explainable findings | Reporting command center |
+|:---:|:---:|
+| ![Case detail](docs/screenshots/shot-case.png) | ![Reports](docs/screenshots/shot-reports.png) |
+
+| Case intake with searchable reference data | AI case assistant (read-only tools) |
+|:---:|:---:|
+| ![Case intake](docs/screenshots/shot-case-new.png) | ![Chat](docs/screenshots/shot-chat.png) |
+
+| Risk rules administration | Security: demo auth, overrides, audit |
+|:---:|:---:|
+| ![Rules](docs/screenshots/shot-rules.png) | ![Admin](docs/screenshots/shot-admin.png) |
+
+<p align="center"><img src="docs/screenshots/shot-home.png" alt="Portal landing page" width="72%"></p>
+
+## Architecture at a glance
+
+![Request flow: the USWDS client prefers the ASP.NET Core API and falls back to an embedded offline dataset; demo auth maps X-Demo-User to roles and policies; services run over a zero-dependency domain; EF Core and Dapper persist to SQL Server; the Gemini assistant streams through read-only case tools](docs/diagrams/request-flow.svg)
+
+Full architecture detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); decisions and
+their reasoning in the [ADRs](docs/adr/); the accessibility contract in
+[docs/ACCESSIBILITY-508.md](docs/ACCESSIBILITY-508.md); and the build narrative
+(centered on the accessibility and USWDS challenges that only surfaced at runtime) in
+[docs/PROCESS-AND-CHALLENGES.md](docs/PROCESS-AND-CHALLENGES.md).
 
 ## Tech Stack
 

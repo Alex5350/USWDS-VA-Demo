@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-label="VA OIG FWA portal architecture: a browser request reaches the Next.js USWDS client, whose data gateway prefers the ASP.NET Core API and falls back to an embedded offline dataset; the API enforces demo auth and policies, runs application services over a pure domain, and persists through EF Core and Dapper to SQL Server with seeded synthetic data; the Gemini-backed case assistant streams from Next.js route handlers through read-only case tools; reporting reads SQL views via Dapper.">
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#1B2737"/>
+    </pattern>
+  </defs>
+  <style>
+    .t-title { font: 600 20px ui-sans-serif, system-ui, sans-serif; fill: #E2E8F0; }
+    .t-sub   { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748B; }
+    .t-node  { font: 600 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #E2E8F0; letter-spacing: .5px; }
+    .t-body  { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #94A3B8; }
+    .t-mut   { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #64748B; }
+    .t-chip  { font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #38BDF8; }
+    .edge   { stroke: #1F2B3D; stroke-width: 1.5; fill: none; }
+    .flowB  { stroke: #38BDF8; stroke-width: 2; fill: none; stroke-dasharray: 5 11; opacity: .85; animation: dashB 1.5s linear infinite; }
+    .flowE  { stroke: #34D399; stroke-width: 1.5; fill: none; stroke-dasharray: 5 11; opacity: .8; animation: dashE 1.4s linear infinite; }
+    .flowA  { stroke: #F59E0B; stroke-width: 1.5; fill: none; stroke-dasharray: 4 10; opacity: .65; animation: dashA 1.2s linear infinite; }
+    .flowR  { stroke: #F87171; stroke-width: 1.5; fill: none; stroke-dasharray: 4 10; opacity: .55; animation: dashA 1.6s linear infinite; }
+    .node   { fill: #0E1620; stroke: #22304A; stroke-width: 1.2; }
+    .pulse  { animation: pulse 3s ease-in-out infinite; }
+    @keyframes dashB { to { stroke-dashoffset: -16; } }
+    @keyframes dashE { to { stroke-dashoffset: -16; } }
+    @keyframes dashA { to { stroke-dashoffset: 16; } }
+    @keyframes pulse { 0%, 100% { stroke-opacity: 1; } 50% { stroke-opacity: .5; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  </style>
+
+  <rect width="1200" height="640" fill="#0B1118"/>
+  <rect width="1200" height="640" fill="url(#dots)" opacity=".5"/>
+
+  <text x="40" y="46" class="t-title">VA OIG FWA Risk Triage Portal: how a request flows</text>
+  <text x="40" y="68" class="t-sub">requests in sky · demo auth in emerald · AI assistant in amber · offline fallback in rose</text>
+  <rect x="880" y="30" width="280" height="26" rx="13" fill="none" stroke="#38BDF8" stroke-opacity=".5"/>
+  <text x="1020" y="47" class="t-chip" text-anchor="middle">synthetic data only · never determines fraud</text>
+
+  <!-- request path -->
+  <path class="edge"  d="M180,330 H278" marker-end="none"/>
+  <path class="flowB" d="M180,330 H278"/>
+  <text x="229" y="320" class="t-mut" text-anchor="middle">https</text>
+
+  <path class="edge"  d="M470,330 H560"/>
+  <path class="flowB" d="M470,330 H560"/>
+  <text x="515" y="320" class="t-mut" text-anchor="middle">X-Demo-User</text>
+
+  <path class="edge"  d="M810,330 H880"/>
+  <path class="flowB" d="M810,330 H880" opacity=".55"/>
+  <text x="845" y="320" class="t-mut" text-anchor="middle">services</text>
+
+  <path class="edge"  d="M930,378 V418"/>
+  <path class="flowB" d="M930,378 V418" opacity=".5"/>
+  <text x="942" y="402" class="t-mut">domain rules</text>
+
+  <path class="edge"  d="M930,478 V518"/>
+  <path class="flowB" d="M930,478 V518" opacity=".5"/>
+  <text x="942" y="502" class="t-mut">EF Core · Dapper</text>
+
+  <!-- offline fallback -->
+  <path class="edge"  d="M330,292 C330,220 210,224 205,268"/>
+  <path class="flowR" d="M330,292 C330,220 210,224 205,268"/>
+  <text x="252" y="230" class="t-mut" text-anchor="middle" fill="#F87171">API absent? offline dataset</text>
+
+  <!-- auth -->
+  <path class="edge"  d="M610,292 C610,206 460,214 430,168"/>
+  <path class="flowE" d="M610,292 C610,206 460,214 430,168"/>
+  <text x="505" y="200" class="t-mut" text-anchor="middle">DemoAuth → policies</text>
+
+  <!-- AI assistant -->
+  <path class="edge"  d="M420,368 C420,428 560,440 640,448"/>
+  <path class="flowA" d="M420,368 C420,428 560,440 640,448"/>
+  <text x="490" y="428" class="t-mut" text-anchor="middle" fill="#F59E0B">streaming chat</text>
+
+  <path class="edge"  d="M810,470 C850,470 860,420 872,380"/>
+  <path class="flowA" d="M810,470 C850,470 860,420 872,380" opacity=".4"/>
+  <text x="866" y="436" class="t-mut" fill="#F59E0B">read-only tools</text>
+
+  <!-- nodes -->
+  <g>
+    <rect class="node" x="20" y="288" width="160" height="84" rx="10"/>
+    <text x="40" y="314" class="t-node">BROWSER</text>
+    <text x="40" y="334" class="t-body">keyboard + SR flows</text>
+    <text x="40" y="350" class="t-body">508 verification</text>
+  </g>
+
+  <g>
+    <rect class="node pulse" x="278" y="288" width="192" height="84" rx="12"/>
+    <text x="298" y="314" class="t-node">NEXT.JS + USWDS 3</text>
+    <text x="298" y="334" class="t-body">Bun · React · Sass</text>
+    <text x="298" y="350" class="t-body">typed data gateway</text>
+  </g>
+
+  <g>
+    <rect class="node" x="150" y="72" width="220" height="96" rx="12"/>
+    <text x="170" y="98" class="t-node">OFFLINE FALLBACK</text>
+    <text x="170" y="118" class="t-body">embedded typed dataset</text>
+    <text x="170" y="134" class="t-body">filters + pagination local</text>
+    <text x="170" y="154" class="t-body">demo without infra (ADR 0004)</text>
+  </g>
+
+  <g>
+    <rect class="node pulse" x="560" y="288" width="250" height="84" rx="12"/>
+    <text x="580" y="314" class="t-node">ASP.NET CORE API</text>
+    <text x="580" y="334" class="t-body">ProblemDetails · Swagger</text>
+    <text x="580" y="350" class="t-body">authorization policies</text>
+  </g>
+
+  <g>
+    <rect class="node" x="380" y="72" width="200" height="96" rx="12"/>
+    <text x="400" y="98" class="t-node">DEMO AUTH</text>
+    <text x="400" y="118" class="t-body">X-Demo-User → roles</text>
+    <text x="400" y="134" class="t-body">5 demo users</text>
+    <text x="400" y="154" class="t-body">audit events · overrides</text>
+  </g>
+
+  <g>
+    <rect class="node" x="880" y="318" width="200" height="60" rx="10"/>
+    <text x="900" y="342" class="t-node">APPLICATION</text>
+    <text x="900" y="360" class="t-body">use cases · DTOs · scoring</text>
+  </g>
+
+  <g>
+    <rect class="node" x="880" y="418" width="200" height="60" rx="10"/>
+    <text x="900" y="442" class="t-node">DOMAIN</text>
+    <text x="900" y="460" class="t-body">rules · workflow · zero deps</text>
+  </g>
+
+  <g>
+    <rect class="node pulse" x="880" y="518" width="200" height="72" rx="10"/>
+    <text x="900" y="542" class="t-node">SQL SERVER 2022</text>
+    <text x="900" y="560" class="t-body">schema · views · procedures</text>
+    <text x="900" y="576" class="t-body">synthetic seed data</text>
+  </g>
+
+  <g>
+    <rect class="node" x="640" y="428" width="170" height="84" rx="12"/>
+    <text x="660" y="454" class="t-node">GEMINI ASSISTANT</text>
+    <text x="660" y="474" class="t-body">streams answers</text>
+    <text x="660" y="490" class="t-body">read-only case tools</text>
+  </g>
+
+  <!-- legend -->
+  <g>
+    <text x="40" y="608" class="t-mut">sky: request path</text>
+    <text x="170" y="608" class="t-mut" fill="#34D399">emerald: demo auth</text>
+    <text x="310" y="608" class="t-mut" fill="#F59E0B">amber: AI assistant</text>
+    <text x="460" y="608" class="t-mut" fill="#F87171">rose: offline fallback</text>
+    <text x="620" y="608" class="t-mut">· every page carries the synthetic-data notice</text>
+  </g>
+</svg>
