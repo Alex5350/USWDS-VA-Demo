@@ -2,6 +2,8 @@
 
 import type { UIMessage } from "ai";
 
+import { ChatMarkdown } from "@/components/chat/ChatMarkdown";
+
 type ChatMessageListProps = {
   messages: UIMessage[];
   status: "submitted" | "streaming" | "ready" | "error";
@@ -65,11 +67,7 @@ function renderMessageParts(message: UIMessage) {
 
 function renderMessagePart(part: MessagePart, key: string) {
   if (part.type === "text") {
-    return part.text.trim().length > 0 ? (
-      <p className="chat-message__text" key={key}>
-        {part.text}
-      </p>
-    ) : null;
+    return part.text.trim().length > 0 ? <ChatMarkdown key={key} text={part.text} /> : null;
   }
 
   if (isToolPart(part)) {
@@ -115,7 +113,9 @@ function ToolPartSummary({ part }: { part: MessagePart }) {
   return (
     <details className="chat-message__tool">
       <summary>
-        Tool lookup: {formatToolName(toolName)} ({formatState(state)})
+        <span className="chat-message__tool-label">Tool lookup</span>
+        <span className="chat-message__tool-name">{formatToolName(toolName)}</span>
+        <span className="chat-message__tool-state">{formatState(state)}</span>
       </summary>
       {preview ? <pre className="chat-message__tool-preview">{preview}</pre> : <p>Tool activity recorded.</p>}
     </details>
