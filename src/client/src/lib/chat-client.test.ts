@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   ChatApiError,
+  deleteChatSession,
   listChatSessions,
   softDeleteChatSession,
   type AddChatMessageRequest,
@@ -56,6 +57,27 @@ await runTest("204 no-content response succeeds", async () => {
       });
     }
   );
+});
+
+await runTest("hard delete sends DELETE to chat session endpoint", async () => {
+  let observedInput = "";
+  let observedMethod = "";
+
+  await withFetchStub(
+    (input, init) => {
+      observedInput = String(input);
+      observedMethod = init?.method ?? "GET";
+      return new Response(null, { status: 204 });
+    },
+    async () => {
+      await deleteChatSession("1f93a7bb-4e05-46b8-b05b-36cf7f988c49", {
+        demoUserEmail: "demo.analyst@local"
+      });
+    }
+  );
+
+  assert.equal(new URL(observedInput).pathname, "/api/chat/sessions/1f93a7bb-4e05-46b8-b05b-36cf7f988c49");
+  assert.equal(observedMethod, "DELETE");
 });
 
 await runTest("non-JSON 500 does not leak raw response body", async () => {

@@ -11,4 +11,5 @@ public interface IChatRepository
     Task<bool> DeleteContextItemAsync(Guid publicId, string userEmail, int contextItemId, CancellationToken cancellationToken);
     Task<bool> RenameSessionAsync(Guid publicId, string userEmail, string title, CancellationToken cancellationToken);
     Task<bool> SoftDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken);
+    Task<bool> HardDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken);
 }

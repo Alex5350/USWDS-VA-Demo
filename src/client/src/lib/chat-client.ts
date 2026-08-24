@@ -285,6 +285,16 @@ export async function softDeleteChatSession(chatId: string, options?: ChatReques
   );
 }
 
+export async function deleteChatSession(chatId: string, options?: ChatRequestOptions): Promise<void> {
+  return requestChatNoContent(
+    chatSessionPath(chatId),
+    {
+      method: "DELETE"
+    },
+    options
+  );
+}
+
 export async function addChatMessage(
   chatId: string,
   request: AddChatMessageRequest,

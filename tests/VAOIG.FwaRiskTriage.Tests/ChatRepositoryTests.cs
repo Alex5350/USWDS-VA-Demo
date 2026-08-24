@@ -171,6 +171,70 @@ public sealed class ChatRepositoryTests
     }
 
     [Fact]
+    public async Task HardDeleteSessionRemovesOwnedSessionAndRelatedRows()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new EfChatRepository(dbContext);
+        var chatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        await repository.CreateSessionAsync(
+            chatId,
+            "demo.analyst@local",
+            "Open cases",
+            new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var message = await repository.AddMessageAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatMessageRequest("user", "Summarize case 12", ClientMessageId: "message-1"),
+            new DateTime(2026, 6, 3, 14, 1, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+        Assert.NotNull(message);
+
+        await repository.AddToolCallAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatToolCallRequest(message.MessageId, "getCaseSummary", "CaseFiles", "{\"caseId\":12}", "Returned case summary.", 1, 12, true, null),
+            new DateTime(2026, 6, 3, 14, 2, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+        await repository.AddContextItemAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatContextItemRequest(message.MessageId, "case", "CaseFile", "12", "Case 12", "{\"caseId\":12}"),
+            new DateTime(2026, 6, 3, 14, 2, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var deleted = await repository.HardDeleteSessionAsync(chatId, "demo.analyst@local", CancellationToken.None);
+
+        Assert.True(deleted);
+        Assert.False(await dbContext.ChatSessions.AnyAsync(x => x.PublicId == chatId));
+        Assert.Empty(await dbContext.ChatMessages.ToListAsync());
+        Assert.Empty(await dbContext.ChatToolCalls.ToListAsync());
+        Assert.Empty(await dbContext.ChatContextItems.ToListAsync());
+    }
+
+    [Fact]
+    public async Task HardDeleteSessionDoesNotDeleteAnotherUsersSession()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new EfChatRepository(dbContext);
+        var chatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        await repository.CreateSessionAsync(
+            chatId,
+            "demo.admin@local",
+            "Admin chat",
+            new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var deleted = await repository.HardDeleteSessionAsync(chatId, "demo.analyst@local", CancellationToken.None);
+
+        Assert.False(deleted);
+        Assert.True(await dbContext.ChatSessions.AnyAsync(x => x.PublicId == chatId && x.UserEmail == "demo.admin@local"));
+    }
+
+    [Fact]
     public void ChatSessionPublicIdHasUniqueIndex()
     {
         using var dbContext = CreateDbContext();

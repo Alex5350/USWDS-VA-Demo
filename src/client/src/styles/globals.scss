@@ -1714,7 +1714,18 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.action-row.chat-history-table__actions {
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: max-content;
+}
+
 .chat-history-table__open-link {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.chat-history-table__delete-button {
   margin: 0;
   white-space: nowrap;
 }

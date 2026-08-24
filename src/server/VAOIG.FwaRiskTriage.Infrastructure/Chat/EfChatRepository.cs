@@ -298,6 +298,35 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
         return true;
     }
 
+    public async Task<bool> HardDeleteSessionAsync(
+        Guid publicId,
+        string userEmail,
+        CancellationToken cancellationToken)
+    {
+        var session = await FindOwnedSessionForUpdateAsync(publicId, userEmail, cancellationToken);
+        if (session is null)
+        {
+            return false;
+        }
+
+        var contextItems = await dbContext.ChatContextItems
+            .Where(x => x.ChatSessionId == session.ChatSessionId)
+            .ToListAsync(cancellationToken);
+        var toolCalls = await dbContext.ChatToolCalls
+            .Where(x => x.ChatSessionId == session.ChatSessionId)
+            .ToListAsync(cancellationToken);
+        var messages = await dbContext.ChatMessages
+            .Where(x => x.ChatSessionId == session.ChatSessionId)
+            .ToListAsync(cancellationToken);
+
+        dbContext.ChatContextItems.RemoveRange(contextItems);
+        dbContext.ChatToolCalls.RemoveRange(toolCalls);
+        dbContext.ChatMessages.RemoveRange(messages);
+        dbContext.ChatSessions.Remove(session);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private Task<ChatSession?> FindOwnedSessionForUpdateAsync(
         Guid publicId,
         string userEmail,

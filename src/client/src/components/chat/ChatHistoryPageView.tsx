@@ -6,12 +6,15 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { UsaAlert } from "@/components/uswds/UsaAlert";
+import { UsaButton } from "@/components/uswds/UsaButton";
 import { UsaPagination } from "@/components/uswds/UsaPagination";
 import { UsaTable } from "@/components/uswds/UsaTable";
-import { listChatSessions, type ChatSession } from "@/lib/chat-client";
+import { deleteChatSession, listChatSessions, type ChatSession } from "@/lib/chat-client";
+import { getChatDeleteDialogState } from "@/lib/chat-history-delete";
 import {
   chatHistoryPageSizeOptions,
-  getChatHistoryPage
+  getChatHistoryPage,
+  type ChatHistoryRow
 } from "@/lib/chat-history-table";
 import { useDemoUser } from "@/lib/demo-auth";
 import { formatDate } from "@/lib/formatters";
@@ -28,11 +31,18 @@ export function ChatHistoryPageView() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loadState, setLoadState] = useState<ChatHistoryLoadState>("idle");
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [pendingDeleteRow, setPendingDeleteRow] = useState<ChatHistoryRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const page = getQueryValue(searchParams, "page");
   const pageSize = getQueryValue(searchParams, "pageSize");
   const historyPage = useMemo(() => getChatHistoryPage(sessions, { page, pageSize }), [page, pageSize, sessions]);
   const isLoading = loadState === "idle" || loadState === "loading";
+  const deleteDialogState = getChatDeleteDialogState({
+    pendingTitle: pendingDeleteRow?.title ?? null,
+    isDeleting
+  });
 
   useEffect(() => {
     let isCurrent = true;
@@ -81,6 +91,39 @@ export function ChatHistoryPageView() {
     };
   }, [canViewRiskQueue, user.email]);
 
+  function openDeleteDialog(row: ChatHistoryRow) {
+    setDeleteError(null);
+    setPendingDeleteRow(row);
+  }
+
+  function cancelDeleteDialog() {
+    if (isDeleting) {
+      return;
+    }
+
+    setPendingDeleteRow(null);
+    setDeleteError(null);
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!pendingDeleteRow) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      await deleteChatSession(pendingDeleteRow.chatId, { demoUserEmail: user.email });
+      setSessions((currentSessions) => currentSessions.filter((session) => session.chatId !== pendingDeleteRow.chatId));
+      setPendingDeleteRow(null);
+    } catch (error: unknown) {
+      setDeleteError(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   if (!canViewRiskQueue) {
     return (
       <div className="page-stack chat-history-page">
@@ -99,6 +142,12 @@ export function ChatHistoryPageView() {
       {loadError ? (
         <UsaAlert type="error" heading="Unable to load chat history">
           {loadError}
+        </UsaAlert>
+      ) : null}
+
+      {deleteError ? (
+        <UsaAlert type="error" heading="Unable to delete chat">
+          {deleteError}
         </UsaAlert>
       ) : null}
 
@@ -152,9 +201,20 @@ export function ChatHistoryPageView() {
                   key: "actions",
                   header: "Actions",
                   render: (row) => (
-                    <Link className="usa-button usa-button--outline chat-history-table__open-link" href={`/chat/${row.chatId}`}>
-                      Open
-                    </Link>
+                    <div className="action-row chat-history-table__actions">
+                      <Link className="usa-button usa-button--outline chat-history-table__open-link" href={`/chat/${row.chatId}`}>
+                        Open
+                      </Link>
+                      <UsaButton
+                        className="chat-history-table__delete-button"
+                        disabled={isDeleting}
+                        type="button"
+                        variant="secondary"
+                        onClick={() => openDeleteDialog(row)}
+                      >
+                        Delete
+                      </UsaButton>
+                    </div>
                   )
                 }
               ]}
@@ -186,6 +246,56 @@ export function ChatHistoryPageView() {
           </div>
         )}
       </section>
+
+      {deleteDialogState && pendingDeleteRow ? (
+        <div className="modal-scrim" role="presentation">
+          <section
+            aria-describedby="delete-chat-dialog-description"
+            aria-labelledby="delete-chat-dialog-heading"
+            aria-modal="true"
+            className="confirm-dialog"
+            role="dialog"
+          >
+            <div className="confirm-dialog__header">
+              <p className="page-eyebrow">Delete saved conversation</p>
+              <h2 id="delete-chat-dialog-heading">{deleteDialogState.heading}</h2>
+            </div>
+            <p id="delete-chat-dialog-description">{deleteDialogState.body}</p>
+            <dl className="confirm-dialog__facts">
+              <div>
+                <dt>Chat ID</dt>
+                <dd>{pendingDeleteRow.shortChatId}</dd>
+              </div>
+              <div>
+                <dt>Last activity</dt>
+                <dd>{formatDate(pendingDeleteRow.lastActivityAt)}</dd>
+              </div>
+              <div>
+                <dt>Created</dt>
+                <dd>{formatDate(pendingDeleteRow.createdAt)}</dd>
+              </div>
+            </dl>
+            <div className="action-row confirm-dialog__actions">
+              <UsaButton
+                disabled={deleteDialogState.controlsDisabled}
+                type="button"
+                variant="secondary"
+                onClick={handleDeleteConfirmed}
+              >
+                {deleteDialogState.confirmLabel}
+              </UsaButton>
+              <UsaButton
+                disabled={deleteDialogState.controlsDisabled}
+                type="button"
+                variant="outline"
+                onClick={cancelDeleteDialog}
+              >
+                {deleteDialogState.cancelLabel}
+              </UsaButton>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

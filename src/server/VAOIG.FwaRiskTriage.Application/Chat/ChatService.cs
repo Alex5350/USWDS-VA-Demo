@@ -91,6 +91,9 @@ public sealed class ChatService(IChatRepository repository, IClock clock)
     public Task<bool> SoftDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken) =>
         repository.SoftDeleteSessionAsync(publicId, NormalizeRequired(userEmail, "User email is required.", 200), cancellationToken);
 
+    public Task<bool> HardDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken) =>
+        repository.HardDeleteSessionAsync(publicId, NormalizeRequired(userEmail, "User email is required.", 200), cancellationToken);
+
     private static string? CreateTitle(string? firstMessage)
     {
         if (string.IsNullOrWhiteSpace(firstMessage))

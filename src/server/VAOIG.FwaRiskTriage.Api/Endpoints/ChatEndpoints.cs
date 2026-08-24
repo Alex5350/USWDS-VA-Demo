@@ -48,6 +48,16 @@ public static class ChatEndpoints
             })
             .RequireAuthorization(Policies.CanViewRiskQueue);
 
+        group.MapDelete("/sessions/{chatId:guid}", async (
+                Guid chatId,
+                ClaimsPrincipal user,
+                ChatService service,
+                CancellationToken cancellationToken) =>
+            await service.HardDeleteSessionAsync(chatId, GetUserEmail(user), cancellationToken)
+                ? Results.NoContent()
+                : Results.NotFound())
+            .RequireAuthorization(Policies.CanViewRiskQueue);
+
         group.MapPatch("/sessions/{chatId:guid}", async (
                 Guid chatId,
                 UpdateChatSessionRequest request,

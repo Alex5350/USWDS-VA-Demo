@@ -167,6 +167,19 @@ public sealed class ChatServiceTests
         Assert.Equal("{ \"status\": \"Open\" }", repository.AddedContextItemRequest.SnapshotJson);
     }
 
+    [Fact]
+    public async Task HardDeleteSessionNormalizesUserEmailBeforeDelegation()
+    {
+        var repository = new FakeChatRepository();
+        var service = new ChatService(repository, new FixedClock());
+        var chatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        await service.HardDeleteSessionAsync(chatId, " demo.analyst@local ", CancellationToken.None);
+
+        Assert.Equal(chatId, repository.HardDeletedPublicId);
+        Assert.Equal("demo.analyst@local", repository.HardDeletedUserEmail);
+    }
+
     private static string Repeat(string value, int count) => string.Concat(Enumerable.Repeat(value, count));
 
     private sealed class FixedClock : IClock
@@ -183,6 +196,8 @@ public sealed class ChatServiceTests
         public AddChatToolCallRequest? AddedToolCallRequest { get; private set; }
         public string? AddedContextItemUserEmail { get; private set; }
         public AddChatContextItemRequest? AddedContextItemRequest { get; private set; }
+        public Guid? HardDeletedPublicId { get; private set; }
+        public string? HardDeletedUserEmail { get; private set; }
 
         public Task<ChatSessionDto> CreateSessionAsync(
             Guid publicId,
@@ -246,5 +261,12 @@ public sealed class ChatServiceTests
 
         public Task<bool> SoftDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken) =>
             Task.FromResult(false);
+
+        public Task<bool> HardDeleteSessionAsync(Guid publicId, string userEmail, CancellationToken cancellationToken)
+        {
+            HardDeletedPublicId = publicId;
+            HardDeletedUserEmail = userEmail;
+            return Task.FromResult(true);
+        }
     }
 }
