@@ -13,14 +13,18 @@ export function AppHeader() {
       <div className="oig-header__rule" aria-hidden="true" />
       <div className="oig-header__inner">
         <Link className="oig-brand" href="/" aria-label="VA OIG FWA Risk Triage home">
-          <span className="oig-brand__seal" aria-hidden="true">
-            <span className="oig-brand__seal-ring">
-              <span className="oig-brand__seal-va">VA</span>
-              <span className="oig-brand__seal-oig">OIG</span>
+          <span className="oig-brand__lockup" aria-hidden="true">
+            <span className="oig-brand__va-wordmark">VA</span>
+            <span className="oig-brand__divider" />
+            <span className="oig-brand__medallion">
+              <span className="oig-brand__medallion-ring">
+                <span className="oig-brand__medallion-star">★</span>
+                <span className="oig-brand__medallion-oig">OIG</span>
+              </span>
             </span>
           </span>
           <span className="oig-brand__text">
-            <span className="oig-brand__agency">Department of Veterans Affairs</span>
+            <span className="oig-brand__agency">U.S. Department of Veterans Affairs</span>
             <span className="oig-brand__office">Office of Inspector General</span>
             <span className="oig-brand__product">FWA Risk Triage & Reporting Portal</span>
           </span>
