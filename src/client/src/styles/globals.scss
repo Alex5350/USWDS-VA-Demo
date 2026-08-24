@@ -1416,6 +1416,10 @@ textarea {
   gap: 0.55rem;
 }
 
+.chat-suggestions__grid[hidden] {
+  display: none;
+}
+
 .chat-suggestions__item {
   display: grid;
   gap: 0.25rem;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { getChatSuggestionsPanelState } from "./chat-suggestions-panel";
 
@@ -32,6 +33,16 @@ await runTest("returns collapsed panel state with a show action and count", () =
 
 await runTest("returns null for an empty suggestion set", () => {
   assert.equal(getChatSuggestionsPanelState({ isCollapsed: false, suggestionCount: 0 }), null);
+});
+
+await runTest("defines CSS that hides the suggestion grid when collapsed", () => {
+  const stylesheet = readFileSync(new URL("../styles/globals.scss", import.meta.url), "utf8");
+
+  assert.match(
+    stylesheet,
+    /\.chat-suggestions__grid\[hidden\]\s*\{[\s\S]*?display:\s*none;/,
+    "Expected .chat-suggestions__grid[hidden] to force display: none."
+  );
 });
 
 if (failures.length > 0) {
