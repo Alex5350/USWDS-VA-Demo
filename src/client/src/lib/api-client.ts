@@ -739,11 +739,11 @@ function reportToQuery(filters: ReportFilters = {}) {
   return params.toString();
 }
 
-function filterProviderRiskReport(filters: ReportFilters = {}) {
+function filterProviderRiskItems(items: ProviderRiskSummary[], filters: ReportFilters = {}) {
   const normalizedSearch = filters.search?.trim().toLowerCase();
   const providerId = filters.providerId === undefined || filters.providerId === "All" ? undefined : Number(filters.providerId);
 
-  return mockProviderRisk.filter((item) => {
+  return items.filter((item) => {
     const matchesProviderId = !providerId || item.providerId === providerId;
     const matchesProviderType = !filters.providerType || filters.providerType === "All" || item.providerType === filters.providerType;
     const matchesState = !filters.state || filters.state === "All" || item.state === filters.state;
@@ -758,17 +758,21 @@ function filterProviderRiskReport(filters: ReportFilters = {}) {
   });
 }
 
-function paginateProviderRiskReport(filters: ReportFilters = {}) {
+function filterProviderRiskReport(filters: ReportFilters = {}) {
+  return filterProviderRiskItems(mockProviderRisk, filters);
+}
+
+function paginateProviderRiskItems(items: ProviderRiskSummary[], filters: ReportFilters = {}) {
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 5;
-  const filtered = filterProviderRiskReport(filters).toSorted(
+  const filtered = filterProviderRiskItems(items, filters).toSorted(
     (a, b) => b.estimatedQuestionedCost - a.estimatedQuestionedCost || b.averageRiskScore - a.averageRiskScore
   );
   const startIndex = (page - 1) * pageSize;
-  const items = filtered.slice(startIndex, startIndex + pageSize);
+  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
 
   return {
-    items,
+    items: pageItems,
     totalItems: filtered.length,
     page,
     pageSize,
@@ -1061,10 +1065,21 @@ export async function getProviderRiskReport(filters: ReportFilters = {}) {
 
 export async function getProviderRiskReportPage(filters: ReportFilters = {}) {
   const query = reportToQuery(filters);
-  return requestJson<PaginatedResponse<ProviderRiskSummary>>(
-    `/api/reports/provider-risk/details${query ? `?${query}` : ""}`,
-    paginateProviderRiskReport(filters)
-  );
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/reports/provider-risk/details${query ? `?${query}` : ""}`, {
+      cache: "no-store",
+      headers: createHeaders()
+    });
+
+    if (response.ok) {
+      return (await response.json()) as PaginatedResponse<ProviderRiskSummary>;
+    }
+
+    throw new Error(`Provider risk detail request failed with ${response.status}`);
+  } catch {
+    const fullProviderRisk = await getProviderRiskReport(filters);
+    return paginateProviderRiskItems(fullProviderRisk, filters);
+  }
 }
 
 export async function getQuestionedCostTrend(filters: ReportFilters = {}) {

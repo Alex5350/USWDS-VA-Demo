@@ -264,11 +264,177 @@ function ReportStat({ label, value, detail }: { label: string; value: string; de
   );
 }
 
+type ReportFilterFormProps = {
+  filters: ReportFilters;
+  providers: Provider[];
+  states: StateTerritory[];
+  currentPageSize: number | undefined;
+  createReportHref: (nextFilters: ReportFilters) => string;
+  onNavigate: (href: string) => void;
+};
+
+function ReportFilterForm({
+  filters,
+  providers,
+  states,
+  currentPageSize,
+  createReportHref,
+  onNavigate
+}: ReportFilterFormProps) {
+  const [draftFilters, setDraftFilters] = useState<ReportFilters>(filters);
+
+  function updateDraftFilter(key: keyof ReportFilters, value: string) {
+    setDraftFilters((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetFilters() {
+    setDraftFilters(defaultFilters);
+    onNavigate(createReportHref(defaultFilters));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onNavigate(
+      createReportHref({
+        ...draftFilters,
+        page: 1,
+        pageSize: currentPageSize ?? defaultFilters.pageSize
+      })
+    );
+  }
+
+  return (
+    <form className="report-filter-card no-print" onSubmit={handleSubmit}>
+      <fieldset className="usa-fieldset">
+        <legend className="usa-legend">Report filters</legend>
+        <p className="filter-panel-intro">
+          Filter by date range, workflow status, provider, provider type, state or territory, and provider search.
+        </p>
+        <div className="report-filter-grid">
+          <UsaFormGroup id="report-from-date" label="From date">
+            <input
+              className="usa-input"
+              id="report-from-date"
+              name="fromDate"
+              type="date"
+              value={draftFilters.fromDate}
+              onChange={(event) => updateDraftFilter("fromDate", event.target.value)}
+            />
+          </UsaFormGroup>
+          <UsaFormGroup id="report-to-date" label="To date">
+            <input
+              className="usa-input"
+              id="report-to-date"
+              name="toDate"
+              type="date"
+              value={draftFilters.toDate}
+              onChange={(event) => updateDraftFilter("toDate", event.target.value)}
+            />
+          </UsaFormGroup>
+          <UsaFormGroup id="report-status" label="Case status">
+            <select
+              className="usa-select"
+              id="report-status"
+              name="status"
+              value={draftFilters.status}
+              onChange={(event) => updateDraftFilter("status", event.target.value)}
+            >
+              <option>All</option>
+              <option>New</option>
+              <option>UnderReview</option>
+              <option>Escalated</option>
+              <option>Referred</option>
+              <option>Closed</option>
+            </select>
+          </UsaFormGroup>
+          <UsaFormGroup id="report-risk-level" label="Risk level">
+            <select
+              className="usa-select"
+              id="report-risk-level"
+              name="riskLevel"
+              value={draftFilters.riskLevel}
+              onChange={(event) => updateDraftFilter("riskLevel", event.target.value)}
+            >
+              <option>All</option>
+              <option>Critical</option>
+              <option>High</option>
+              <option>Medium</option>
+              <option>Low</option>
+            </select>
+          </UsaFormGroup>
+          <UsaFormGroup id="report-provider" label="Provider">
+            <select
+              className="usa-select"
+              id="report-provider"
+              name="providerId"
+              value={draftFilters.providerId}
+              onChange={(event) => updateDraftFilter("providerId", event.target.value)}
+            >
+              <option value="All">All providers</option>
+              {providers.map((provider) => (
+                <option key={provider.providerId} value={provider.providerId}>
+                  {createProviderLabel(provider)}
+                </option>
+              ))}
+            </select>
+          </UsaFormGroup>
+          <UsaFormGroup id="report-provider-type" label="Provider type">
+            <select
+              className="usa-select"
+              id="report-provider-type"
+              name="providerType"
+              value={draftFilters.providerType}
+              onChange={(event) => updateDraftFilter("providerType", event.target.value)}
+            >
+              <option>All</option>
+              {providerTypes.map((providerType) => (
+                <option key={providerType}>{providerType}</option>
+              ))}
+            </select>
+          </UsaFormGroup>
+          <UsaFormGroup id="report-state" label="State or territory">
+            <select
+              className="usa-select"
+              id="report-state"
+              name="state"
+              value={draftFilters.state}
+              onChange={(event) => updateDraftFilter("state", event.target.value)}
+            >
+              <option>All</option>
+              {states.map((state) => (
+                <option key={state.code} value={state.code}>
+                  {state.code}: {state.name}
+                </option>
+              ))}
+            </select>
+          </UsaFormGroup>
+          <UsaFormGroup id="report-provider-search" label="Provider search">
+            <input
+              className="usa-input"
+              id="report-provider-search"
+              name="search"
+              type="search"
+              value={draftFilters.search}
+              onChange={(event) => updateDraftFilter("search", event.target.value)}
+            />
+          </UsaFormGroup>
+        </div>
+        <div className="report-action-strip">
+          <UsaButton type="submit">Apply filters</UsaButton>
+          <UsaButton type="button" variant="outline" onClick={resetFilters}>
+            Reset
+          </UsaButton>
+        </div>
+      </fieldset>
+    </form>
+  );
+}
+
 export function ReportWorkbenchView({ kind }: ReportWorkbenchViewProps) {
   const searchParams = useSearchParams();
   const filters = useMemo(() => filtersFromQuery(searchParams), [searchParams]);
 
-  return <ReportWorkbenchContent key={searchParams.toString()} kind={kind} filters={filters} />;
+  return <ReportWorkbenchContent kind={kind} filters={filters} />;
 }
 
 type ReportWorkbenchContentProps = ReportWorkbenchViewProps & {
@@ -281,7 +447,6 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
   const metadata = reportMetadata[kind];
   const { hasPermission } = useDemoUser();
   const canExport = hasPermission("CanExportReports");
-  const [draftFilters, setDraftFilters] = useState<ReportFilters>(filters);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [states, setStates] = useState<StateTerritory[]>([]);
   const [summary, setSummary] = useState<ReportSummary>(emptySummary);
@@ -290,6 +455,7 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
   const [trend, setTrend] = useState<QuestionedCostTrend[]>([]);
   const [aging, setAging] = useState<CaseAging[]>([]);
   const [statusMessage, setStatusMessage] = useState("Loading reporting data.");
+  const [detailStatusMessage, setDetailStatusMessage] = useState("Loading report detail table.");
 
   function createReportHref(nextFilters: ReportFilters) {
     const params = new URLSearchParams();
@@ -317,6 +483,20 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
     return `${pathname}?${params.toString()}`;
   }
 
+  const {
+    fromDate,
+    toDate,
+    status,
+    riskLevel,
+    providerId,
+    providerType,
+    state,
+    search,
+    page,
+    pageSize
+  } = filters;
+  const filterFormKey = [fromDate, toDate, status, riskLevel, providerId, providerType, state, search].join("|");
+
   useEffect(() => {
     let isMounted = true;
 
@@ -337,14 +517,22 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
 
   useEffect(() => {
     let isMounted = true;
-    const activeFilters = applyFilters(filters);
+    const activeFilters = applyFilters({
+      fromDate,
+      toDate,
+      status,
+      riskLevel,
+      providerId,
+      providerType,
+      state,
+      search
+    });
 
     async function loadReports() {
       setStatusMessage("Loading reporting data.");
-      const [summaryResult, providerResult, providerPageResult, trendResult, agingResult] = await Promise.all([
+      const [summaryResult, providerResult, trendResult, agingResult] = await Promise.all([
         getReportSummary(activeFilters),
         getProviderRiskReport(activeFilters),
-        getProviderRiskReportPage(activeFilters),
         getQuestionedCostTrend(activeFilters),
         getCaseAgingReport(activeFilters)
       ]);
@@ -352,12 +540,9 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
       if (isMounted) {
         setSummary(summaryResult);
         setProviderRisk(providerResult);
-        setProviderRiskPage(providerPageResult);
         setTrend(trendResult);
         setAging(agingResult);
-        setStatusMessage(
-          `Reporting data loaded with current filters. Detail table page ${providerPageResult.page} of ${providerPageResult.totalPages}.`
-        );
+        setStatusMessage("Reporting data loaded with current filters.");
       }
     }
 
@@ -366,7 +551,43 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
     return () => {
       isMounted = false;
     };
-  }, [filters]);
+  }, [fromDate, toDate, status, riskLevel, providerId, providerType, state, search]);
+
+  useEffect(() => {
+    if (kind !== "command-center" && kind !== "provider-risk") {
+      return undefined;
+    }
+
+    let isMounted = true;
+    const activeFilters = applyFilters({
+      fromDate,
+      toDate,
+      status,
+      riskLevel,
+      providerId,
+      providerType,
+      state,
+      search,
+      page,
+      pageSize
+    });
+
+    async function loadProviderRiskPage() {
+      setDetailStatusMessage("Loading report detail table.");
+      const providerPageResult = await getProviderRiskReportPage(activeFilters);
+
+      if (isMounted) {
+        setProviderRiskPage(providerPageResult);
+        setDetailStatusMessage(`Detail table page ${providerPageResult.page} of ${providerPageResult.totalPages} loaded.`);
+      }
+    }
+
+    void loadProviderRiskPage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [kind, fromDate, toDate, status, riskLevel, providerId, providerType, state, search, page, pageSize]);
 
   const trendChart = useMemo(
     () =>
@@ -425,26 +646,6 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
     return getRiskQueueCsv(activeFilters);
   };
 
-  function updateDraftFilter(key: keyof ReportFilters, value: string) {
-    setDraftFilters((current) => ({ ...current, [key]: value }));
-  }
-
-  function resetFilters() {
-    setDraftFilters(defaultFilters);
-    router.push(createReportHref(defaultFilters));
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    router.push(
-      createReportHref({
-        ...draftFilters,
-        page: 1,
-        pageSize: filters.pageSize ?? defaultFilters.pageSize
-      })
-    );
-  }
-
   function exportPdf() {
     window.print();
   }
@@ -473,129 +674,15 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
         </dl>
       </section>
 
-      <form className="report-filter-card no-print" onSubmit={handleSubmit}>
-        <fieldset className="usa-fieldset">
-          <legend className="usa-legend">Report filters</legend>
-          <p className="filter-panel-intro">
-            Filter by date range, workflow status, provider, provider type, state or territory, and provider search.
-          </p>
-          <div className="report-filter-grid">
-            <UsaFormGroup id="report-from-date" label="From date">
-              <input
-                className="usa-input"
-                id="report-from-date"
-                name="fromDate"
-                type="date"
-                value={draftFilters.fromDate}
-                onChange={(event) => updateDraftFilter("fromDate", event.target.value)}
-              />
-            </UsaFormGroup>
-            <UsaFormGroup id="report-to-date" label="To date">
-              <input
-                className="usa-input"
-                id="report-to-date"
-                name="toDate"
-                type="date"
-                value={draftFilters.toDate}
-                onChange={(event) => updateDraftFilter("toDate", event.target.value)}
-              />
-            </UsaFormGroup>
-            <UsaFormGroup id="report-status" label="Case status">
-              <select
-                className="usa-select"
-                id="report-status"
-                name="status"
-                value={draftFilters.status}
-                onChange={(event) => updateDraftFilter("status", event.target.value)}
-              >
-                <option>All</option>
-                <option>New</option>
-                <option>UnderReview</option>
-                <option>Escalated</option>
-                <option>Referred</option>
-                <option>Closed</option>
-              </select>
-            </UsaFormGroup>
-            <UsaFormGroup id="report-risk-level" label="Risk level">
-              <select
-                className="usa-select"
-                id="report-risk-level"
-                name="riskLevel"
-                value={draftFilters.riskLevel}
-                onChange={(event) => updateDraftFilter("riskLevel", event.target.value)}
-              >
-                <option>All</option>
-                <option>Critical</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-              </select>
-            </UsaFormGroup>
-            <UsaFormGroup id="report-provider" label="Provider">
-              <select
-                className="usa-select"
-                id="report-provider"
-                name="providerId"
-                value={draftFilters.providerId}
-                onChange={(event) => updateDraftFilter("providerId", event.target.value)}
-              >
-                <option value="All">All providers</option>
-                {providers.map((provider) => (
-                  <option key={provider.providerId} value={provider.providerId}>
-                    {createProviderLabel(provider)}
-                  </option>
-                ))}
-              </select>
-            </UsaFormGroup>
-            <UsaFormGroup id="report-provider-type" label="Provider type">
-              <select
-                className="usa-select"
-                id="report-provider-type"
-                name="providerType"
-                value={draftFilters.providerType}
-                onChange={(event) => updateDraftFilter("providerType", event.target.value)}
-              >
-                <option>All</option>
-                {providerTypes.map((providerType) => (
-                  <option key={providerType}>{providerType}</option>
-                ))}
-              </select>
-            </UsaFormGroup>
-            <UsaFormGroup id="report-state" label="State or territory">
-              <select
-                className="usa-select"
-                id="report-state"
-                name="state"
-                value={draftFilters.state}
-                onChange={(event) => updateDraftFilter("state", event.target.value)}
-              >
-                <option>All</option>
-                {states.map((state) => (
-                  <option key={state.code} value={state.code}>
-                    {state.code}: {state.name}
-                  </option>
-                ))}
-              </select>
-            </UsaFormGroup>
-            <UsaFormGroup id="report-provider-search" label="Provider search">
-              <input
-                className="usa-input"
-                id="report-provider-search"
-                name="search"
-                type="search"
-                value={draftFilters.search}
-                onChange={(event) => updateDraftFilter("search", event.target.value)}
-              />
-            </UsaFormGroup>
-          </div>
-          <div className="report-action-strip">
-            <UsaButton type="submit">Apply filters</UsaButton>
-            <UsaButton type="button" variant="outline" onClick={resetFilters}>
-              Reset
-            </UsaButton>
-          </div>
-        </fieldset>
-      </form>
+      <ReportFilterForm
+        key={filterFormKey}
+        filters={filters}
+        providers={providers}
+        states={states}
+        currentPageSize={pageSize}
+        createReportHref={createReportHref}
+        onNavigate={(href) => router.push(href)}
+      />
 
       <section className="report-export-panel no-print" aria-labelledby="report-export-heading">
         <div>
@@ -786,6 +873,11 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
 
       <section className="report-table-panel print-report-section" aria-labelledby="report-table-heading">
         <h2 id="report-table-heading">Report Detail Table</h2>
+        {kind === "command-center" || kind === "provider-risk" ? (
+          <p className="status-text no-print" aria-live="polite">
+            {detailStatusMessage}
+          </p>
+        ) : null}
         {kind === "questioned-cost" ? (
           <UsaTable
             caption="Questioned cost trend report details"
@@ -854,7 +946,8 @@ function ReportWorkbenchContent({ kind, filters }: ReportWorkbenchContentProps) 
               totalItems={providerRiskPage.totalItems}
               totalPages={providerRiskPage.totalPages}
               getPageHref={(page) => createReportHref({ ...filters, page })}
-              onPageSizeChange={(pageSize) => router.push(createReportHref({ ...filters, page: 1, pageSize }))}
+              onPageSizeChange={(pageSize) => router.push(createReportHref({ ...filters, page: 1, pageSize }), { scroll: false })}
+              scroll={false}
             />
           </>
         )}

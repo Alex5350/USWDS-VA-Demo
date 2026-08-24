@@ -10,6 +10,7 @@ type UsaPaginationProps = {
   getPageHref?: (page: number) => string;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  scroll?: boolean;
 };
 
 function getVisiblePages(page: number, totalPages: number) {
@@ -39,7 +40,8 @@ export function UsaPagination({
   totalPages,
   getPageHref,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  scroll = true
 }: UsaPaginationProps) {
   const normalizedTotalPages = Math.max(1, totalPages);
   const visiblePages = getVisiblePages(page, normalizedTotalPages);
@@ -63,7 +65,7 @@ export function UsaPagination({
 
     if (getPageHref) {
       return (
-        <Link {...sharedProps} href={getPageHref(pageNumber)}>
+        <Link {...sharedProps} href={getPageHref(pageNumber)} scroll={scroll}>
           {label}
         </Link>
       );
