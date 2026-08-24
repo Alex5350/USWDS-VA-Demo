@@ -22,6 +22,7 @@ export function AppHeader() {
             height={57}
           />
           <span className="oig-brand__text">
+            <span className="oig-brand__department">U.S. Department of Veterans Affairs</span>
             <span className="oig-brand__office">Office of Inspector General</span>
             <span className="oig-brand__product">FWA Risk Triage & Reporting Portal</span>
           </span>
