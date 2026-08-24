@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import { DemoRoleSelector } from "@/components/security/DemoRoleSelector";
@@ -13,18 +14,14 @@ export function AppHeader() {
       <div className="oig-header__rule" aria-hidden="true" />
       <div className="oig-header__inner">
         <Link className="oig-brand" href="/" aria-label="VA OIG FWA Risk Triage home">
-          <span className="oig-brand__lockup" aria-hidden="true">
-            <span className="oig-brand__va-wordmark">VA</span>
-            <span className="oig-brand__divider" />
-            <span className="oig-brand__medallion">
-              <span className="oig-brand__medallion-ring">
-                <span className="oig-brand__medallion-star">★</span>
-                <span className="oig-brand__medallion-oig">OIG</span>
-              </span>
-            </span>
-          </span>
+          <Image
+            className="oig-brand__logo"
+            src="/brand/va-header-logo.png"
+            alt="VA logo and Seal, U.S. Department of Veterans Affairs"
+            width={264}
+            height={59}
+          />
           <span className="oig-brand__text">
-            <span className="oig-brand__agency">U.S. Department of Veterans Affairs</span>
             <span className="oig-brand__office">Office of Inspector General</span>
             <span className="oig-brand__product">FWA Risk Triage & Reporting Portal</span>
           </span>
