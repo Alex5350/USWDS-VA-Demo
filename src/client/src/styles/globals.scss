@@ -1365,8 +1365,8 @@ textarea {
   gap: 0.7rem;
   min-width: 0;
   padding: 0.85rem;
-  background: #f7fbff;
-  border: 1px solid #d3e3f2;
+  background: #fff8e8;
+  border: 1px solid #e8c86f;
   border-radius: var(--app-radius);
 }
 
@@ -1386,7 +1386,7 @@ textarea {
 
 .chat-suggestions__header h3 {
   margin: 0;
-  color: var(--app-blue-dark);
+  color: #7d4e00;
   font-size: 0.95rem;
   line-height: 1.25;
 }
@@ -1399,7 +1399,7 @@ textarea {
 .chat-suggestions__toggle {
   margin: 0;
   padding: 0;
-  color: var(--app-blue);
+  color: #7d4e00;
   background: transparent;
   border: 0;
   font: inherit;
@@ -1411,7 +1411,7 @@ textarea {
 }
 
 .chat-suggestions__toggle:hover {
-  color: var(--app-blue-dark);
+  color: #4d3100;
 }
 
 .chat-suggestions__toggle:focus-visible {
@@ -1435,17 +1435,17 @@ textarea {
   min-width: 0;
   padding: 0.65rem 0.7rem;
   color: var(--app-ink);
-  background: #ffffff;
-  border: 1px solid #c7d9eb;
-  border-left: 0.25rem solid var(--app-blue);
+  background: #fffdf7;
+  border: 1px solid #e3c77b;
+  border-left: 0.25rem solid #f9c642;
   border-radius: var(--app-radius);
   text-align: left;
   cursor: pointer;
 }
 
 .chat-suggestions__item:hover:not(:disabled) {
-  background: #eef7ff;
-  border-color: var(--app-blue);
+  background: #fff3cd;
+  border-color: #b98600;
 }
 
 .chat-suggestions__item:disabled {
@@ -1456,7 +1456,7 @@ textarea {
 }
 
 .chat-suggestions__label {
-  color: var(--app-blue-dark);
+  color: #7d4e00;
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.2;

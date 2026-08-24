@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   createCaseAssistantPromptMessage,
   getPromptInputActionState,
+  shouldFocusPromptInput,
   shouldSubmitPromptInputKey
 } from "./case-assistant-prompt-input";
 
@@ -60,6 +61,35 @@ await runTest("exposes send and stop action state for accessible controls", () =
       label: "Stop response",
       disabled: false
     }
+  );
+});
+
+await runTest("focuses the prompt input once per route key after it is enabled", () => {
+  assert.equal(
+    shouldFocusPromptInput({
+      focusKey: "chat-1:demo.readonly@local:true",
+      isComposerDisabled: false,
+      lastFocusedKey: null
+    }),
+    true
+  );
+
+  assert.equal(
+    shouldFocusPromptInput({
+      focusKey: "chat-1:demo.readonly@local:true",
+      isComposerDisabled: true,
+      lastFocusedKey: null
+    }),
+    false
+  );
+
+  assert.equal(
+    shouldFocusPromptInput({
+      focusKey: "chat-1:demo.readonly@local:true",
+      isComposerDisabled: false,
+      lastFocusedKey: "chat-1:demo.readonly@local:true"
+    }),
+    false
   );
 });
 

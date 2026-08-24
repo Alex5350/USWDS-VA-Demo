@@ -425,6 +425,7 @@ export function ChatView(props: ChatViewProps) {
             allowWebSearch={allowWebSearch}
             canStop={isChatBusy}
             disabled={isLoading || Boolean(loadError)}
+            focusKey={chatDataKey}
             isBusy={isComposerBusy}
             onAllowWebSearchChange={setAllowWebSearch}
             onStop={handleStop}

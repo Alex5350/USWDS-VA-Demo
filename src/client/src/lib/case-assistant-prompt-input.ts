@@ -29,6 +29,18 @@ export function shouldSubmitPromptInputKey(state: PromptInputKeyState) {
   return state.key === "Enter" && state.shiftKey !== true && state.isComposing !== true;
 }
 
+export function shouldFocusPromptInput({
+  focusKey,
+  isComposerDisabled,
+  lastFocusedKey
+}: {
+  focusKey?: string;
+  isComposerDisabled: boolean;
+  lastFocusedKey: string | null;
+}) {
+  return Boolean(focusKey && !isComposerDisabled && lastFocusedKey !== focusKey);
+}
+
 export function getPromptInputActionState({
   canStop,
   disabled,

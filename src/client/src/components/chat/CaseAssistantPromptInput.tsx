@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   type FormEvent,
@@ -12,6 +13,7 @@ import { UsaButton } from "@/components/uswds/UsaButton";
 import {
   createCaseAssistantPromptMessage,
   getPromptInputActionState,
+  shouldFocusPromptInput,
   shouldSubmitPromptInputKey,
   type CaseAssistantPromptInputMessage
 } from "@/lib/case-assistant-prompt-input";
@@ -24,6 +26,7 @@ type CaseAssistantPromptInputProps = {
   isBusy: boolean;
   canStop: boolean;
   disabled?: boolean;
+  focusKey?: string;
   onValueChange: (value: string) => void;
   onAllowWebSearchChange: (checked: boolean) => void;
   onSuggestionSelect?: (prompt: string) => void;
@@ -38,6 +41,7 @@ export function CaseAssistantPromptInput({
   isBusy,
   canStop,
   disabled = false,
+  focusKey,
   onValueChange,
   onAllowWebSearchChange,
   onSuggestionSelect,
@@ -45,6 +49,7 @@ export function CaseAssistantPromptInput({
   onStop
 }: CaseAssistantPromptInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastFocusedKeyRef = useRef<string | null>(null);
   const isComposerDisabled = disabled || isBusy;
   const actionState = getPromptInputActionState({
     canStop,
@@ -63,6 +68,39 @@ export function CaseAssistantPromptInput({
     textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [value]);
+
+  useEffect(() => {
+    if (
+      !shouldFocusPromptInput({
+        focusKey,
+        isComposerDisabled,
+        lastFocusedKey: lastFocusedKeyRef.current
+      })
+    ) {
+      return;
+    }
+
+    const animationFrameId = window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+
+      if (!textarea || textarea.disabled) {
+        return;
+      }
+
+      textarea.focus({ preventScroll: true });
+      lastFocusedKeyRef.current = focusKey ?? null;
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [focusKey, isComposerDisabled]);
+
+  function focusTextarea() {
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus({ preventScroll: true });
+    });
+  }
 
   function submitCurrentMessage() {
     const message = createCaseAssistantPromptMessage(value);
@@ -107,10 +145,11 @@ export function CaseAssistantPromptInput({
         onSelect={(prompt) => {
           if (onSuggestionSelect) {
             onSuggestionSelect(prompt);
-            return;
+          } else {
+            onValueChange(prompt);
           }
 
-          onValueChange(prompt);
+          focusTextarea();
         }}
         suggestions={suggestions}
       />
