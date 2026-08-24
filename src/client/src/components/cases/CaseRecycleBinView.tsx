@@ -10,10 +10,11 @@ import { useDemoUser } from "@/lib/demo-auth";
 import { formatDate, preciseCurrencyFormatter } from "@/lib/formatters";
 
 export function CaseRecycleBinView() {
-  const { hasPermission } = useDemoUser();
+  const { user, hasPermission } = useDemoUser();
   const [records, setRecords] = useState<DeletedCaseRecord[]>([]);
-  const [message, setMessage] = useState("Loading soft-deleted case records.");
+  const [message, setMessage] = useState("Loading deleted case records.");
   const [restoringCaseId, setRestoringCaseId] = useState<number | null>(null);
+  const isPersonalRecycleBin = user.role === "Analyst" || user.role === "Investigator";
 
   useEffect(() => {
     let isMounted = true;
@@ -27,7 +28,11 @@ export function CaseRecycleBinView() {
       const result = await getDeletedCaseRecords();
       if (isMounted) {
         setRecords(result);
-        setMessage(`${result.length} soft-deleted case records loaded.`);
+        setMessage(
+          isPersonalRecycleBin
+            ? `${result.length} deleted case records loaded for ${user.displayName}.`
+            : `${result.length} deleted case records loaded.`
+        );
       }
     }
 
@@ -36,7 +41,7 @@ export function CaseRecycleBinView() {
     return () => {
       isMounted = false;
     };
-  }, [hasPermission]);
+  }, [hasPermission, isPersonalRecycleBin, user.displayName]);
 
   async function handleRestore(caseId: number) {
     setRestoringCaseId(caseId);
@@ -57,7 +62,7 @@ export function CaseRecycleBinView() {
           ]}
         />
         <UsaAlert type="info" heading="Recycle bin unavailable">
-          Current demo role cannot soft-delete or restore case records.
+          Current demo role cannot delete or restore case records.
         </UsaAlert>
       </div>
     );
@@ -80,9 +85,11 @@ export function CaseRecycleBinView() {
       <section className="panel" aria-labelledby="recycle-bin-heading">
         <div className="section-header-row">
           <div>
-            <h2 id="recycle-bin-heading">Soft-deleted Case Records</h2>
+            <h2 id="recycle-bin-heading">{isPersonalRecycleBin ? "My Deleted Case Records" : "Deleted Case Records"}</h2>
             <p className="status-text">
-              Deleted records are hidden from the active queue and reports until restored.
+              {isPersonalRecycleBin
+                ? "These are case records deleted by your current demo user. Restore returns them to the active queue."
+                : "Deleted records are hidden from the active queue and reports until restored."}
             </p>
           </div>
           <UsaButton href="/risk-queue" variant="outline">
@@ -92,11 +99,13 @@ export function CaseRecycleBinView() {
 
         {records.length === 0 ? (
           <UsaAlert slim type="info">
-            No soft-deleted case records are currently in the recycle bin.
+            {isPersonalRecycleBin
+              ? "Your recycle bin does not currently contain deleted case records."
+              : "No deleted case records are currently in the recycle bin."}
           </UsaAlert>
         ) : (
           <UsaTable
-            caption="Soft-deleted case records available for restore"
+            caption={isPersonalRecycleBin ? "Your deleted case records available for restore" : "Deleted case records available for restore"}
             rows={records}
             getRowKey={(record) => record.caseId}
             columns={[
@@ -139,11 +148,6 @@ export function CaseRecycleBinView() {
                     <div className="status-text">{record.deletedBy ?? "Unknown demo user"}</div>
                   </>
                 )
-              },
-              {
-                key: "reason",
-                header: "Reason",
-                render: (record) => record.deleteReason || "No reason provided."
               },
               {
                 key: "actions",

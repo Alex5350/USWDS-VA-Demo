@@ -35,7 +35,7 @@ The `X-Demo-User` header is intentionally easy to switch for demonstrations. It 
 | View risk queue | Yes | Yes | Yes | Yes | Yes |
 | View case detail | Yes | Yes | Yes | Yes | Yes |
 | Edit case detail | No | Yes | Yes | Yes | Yes |
-| Soft-delete and restore case detail | No | Yes | Yes | Yes | Yes |
+| Delete and restore case detail | No | Own deleted cases | Own deleted cases | Yes | Yes |
 | Add case note | No | Yes | Yes | Yes | Yes |
 | Change case status | No | Yes | Yes | Yes | Yes |
 | Mark case referred | No | No | Yes | Yes | Yes |

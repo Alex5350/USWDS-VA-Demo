@@ -51,7 +51,7 @@ public sealed class CaseWorkflowTests
 
         public Task<CaseDetailDto?> GetCaseDetailAsync(int caseId, CancellationToken cancellationToken) => Task.FromResult<CaseDetailDto?>(null);
 
-        public Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(CancellationToken cancellationToken) =>
+        public Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(string? deletedByScope, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<DeletedCaseRecordDto>>([]);
 
         public Task<CaseNoteDto> AddNoteAsync(int caseId, string noteText, string createdBy, DateTime createdDate, CancellationToken cancellationToken) =>
@@ -68,7 +68,7 @@ public sealed class CaseWorkflowTests
             CancellationToken cancellationToken) =>
             Task.FromResult(true);
 
-        public Task<bool> RestoreCaseRecordAsync(int caseId, CancellationToken cancellationToken) =>
+        public Task<bool> RestoreCaseRecordAsync(int caseId, string? deletedByScope, CancellationToken cancellationToken) =>
             Task.FromResult(true);
 
         public Task<bool> UpdateStatusAsync(int caseId, string status, DateTime changedAt, CancellationToken cancellationToken)

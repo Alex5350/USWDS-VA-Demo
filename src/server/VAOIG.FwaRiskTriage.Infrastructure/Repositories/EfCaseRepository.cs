@@ -98,12 +98,13 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
             notes);
     }
 
-    public async Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<DeletedCaseRecordDto>> GetDeletedCaseRecordsAsync(string? deletedByScope, CancellationToken cancellationToken) =>
         await (
                 from caseFile in dbContext.CaseFiles.AsNoTracking()
                 join claim in dbContext.Claims.AsNoTracking() on caseFile.ClaimId equals claim.ClaimId
                 join provider in dbContext.Providers.AsNoTracking() on claim.ProviderId equals provider.ProviderId
                 where caseFile.IsDeleted
+                      && (deletedByScope == null || caseFile.DeletedBy == deletedByScope)
                 orderby caseFile.DeletedAt descending, caseFile.CaseId descending
                 select new DeletedCaseRecordDto(
                     caseFile.CaseId,
@@ -188,9 +189,13 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
         return true;
     }
 
-    public async Task<bool> RestoreCaseRecordAsync(int caseId, CancellationToken cancellationToken)
+    public async Task<bool> RestoreCaseRecordAsync(int caseId, string? deletedByScope, CancellationToken cancellationToken)
     {
-        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId, cancellationToken);
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(
+            x => x.CaseId == caseId
+                 && x.IsDeleted
+                 && (deletedByScope == null || x.DeletedBy == deletedByScope),
+            cancellationToken);
         if (caseFile is null || !caseFile.IsDeleted)
         {
             return false;

@@ -31,7 +31,7 @@ The mock `X-Demo-User` header is intentionally easy to switch for interview demo
 
 Administrators can assign synthetic permission overrides to fake demo users and view audit events. This is not production user provisioning, governance, or immutable audit logging.
 
-Analysts, Investigators, Supervisors, and Administrators can create, edit, soft-delete, and restore synthetic case records. Soft deletion moves records to a recycle bin instead of physically removing linked synthetic claims, findings, and notes. Investigators, Supervisors, and Administrators can manage synthetic providers. Supervisors and Administrators can manage procedure-code reference data. These permissions are intended to demonstrate policy-based authorization only.
+Analysts, Investigators, Supervisors, and Administrators can create, edit, delete, and restore synthetic case records. Deletion is implemented as soft deletion so linked synthetic claims, findings, and notes are retained. Analysts and Investigators can restore their own deleted case records; Supervisors and Administrators can review and restore the broader deleted-record queue. Investigators, Supervisors, and Administrators can manage synthetic providers. Supervisors and Administrators can manage procedure-code reference data. These permissions are intended to demonstrate policy-based authorization only.
 
 ## Synthetic Data Statement
 

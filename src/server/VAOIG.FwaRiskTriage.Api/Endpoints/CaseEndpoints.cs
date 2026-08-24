@@ -58,8 +58,8 @@ public static class CaseEndpoints
             })
             .RequireAuthorization(Policies.CanViewCaseDetail);
 
-        group.MapGet("/deleted", async (ICaseRepository repository, CancellationToken cancellationToken) =>
-            TypedResults.Ok(await repository.GetDeletedCaseRecordsAsync(cancellationToken)))
+        group.MapGet("/deleted", async (ClaimsPrincipal user, ICaseRepository repository, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await repository.GetDeletedCaseRecordsAsync(GetDeletedByScope(user), cancellationToken)))
             .RequireAuthorization(Policies.CanDeleteCase);
 
         group.MapPost("/{caseId:int}/notes", async (
@@ -171,13 +171,13 @@ public static class CaseEndpoints
                 IClock clock,
                 CancellationToken cancellationToken) =>
             {
-                var restored = await repository.RestoreCaseRecordAsync(caseId, cancellationToken);
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                var restored = await repository.RestoreCaseRecordAsync(caseId, GetDeletedByScope(user), cancellationToken);
                 if (!restored)
                 {
                     return Results.NotFound();
                 }
 
-                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
                 await auditRepository.RecordAsync(
                     actor,
                     "CaseRecordRestored",
@@ -268,4 +268,14 @@ public static class CaseEndpoints
 
     private static string NormalizeAuditReason(string? reason) =>
         string.IsNullOrWhiteSpace(reason) ? "No reason provided." : reason.Trim();
+
+    private static string? GetDeletedByScope(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Administrator") || user.IsInRole("Supervisor"))
+        {
+            return null;
+        }
+
+        return user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+    }
 }

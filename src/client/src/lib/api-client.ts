@@ -847,7 +847,7 @@ export async function getDeletedCaseRecords() {
   return requestJson<DeletedCaseRecord[]>("/api/cases/deleted", []);
 }
 
-export async function deleteCaseRecord(caseId: number, reason: string) {
+export async function deleteCaseRecord(caseId: number, reason = "") {
   return requestJson<{ ok: boolean }>(
     `/api/cases/${caseId}/delete`,
     { ok: true },

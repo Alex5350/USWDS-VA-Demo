@@ -128,7 +128,7 @@ Returns claim, provider, authorization, risk findings, related hotline complaint
 }
 ```
 
-`POST /api/cases/{caseId}/delete` soft-deletes the synthetic case into the recycle bin and records an audit event. It does not physically remove the linked synthetic claim, findings, or notes.
+`POST /api/cases/{caseId}/delete` deletes the synthetic case from the active queue and records an audit event. The implementation uses soft deletion, so it does not physically remove the linked synthetic claim, findings, or notes.
 
 ```json
 {
@@ -136,7 +136,7 @@ Returns claim, provider, authorization, risk findings, related hotline complaint
 }
 ```
 
-`DELETE /api/cases/{caseId}` is kept as a compatibility alias for soft deletion. `GET /api/cases/deleted` lists soft-deleted case records. `PUT /api/cases/{caseId}/restore` restores a soft-deleted case to the active queue.
+`DELETE /api/cases/{caseId}` is kept as a compatibility alias for soft deletion. `GET /api/cases/deleted` lists deleted case records available to the current demo user: Analysts and Investigators see their own deleted records, while Supervisors and Administrators see the broader deleted-record queue. `PUT /api/cases/{caseId}/restore` restores an allowed deleted case to the active queue.
 
 ## Add Case Note
 

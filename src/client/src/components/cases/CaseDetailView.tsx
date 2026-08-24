@@ -34,9 +34,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
   const [message, setMessage] = useState("Loading case detail.");
   const [noteError, setNoteError] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteReason, setDeleteReason] = useState("");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -121,9 +118,6 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       return;
     }
 
-    setDeleteReason("");
-    setDeleteConfirmation("");
-    setDeleteError("");
     setIsDeleteDialogOpen(true);
   }
 
@@ -132,14 +126,8 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       return;
     }
 
-    const expectedConfirmation = `DELETE CASE ${caseDetail.caseId}`;
-    if (deleteConfirmation.trim() !== expectedConfirmation) {
-      setDeleteError(`Type ${expectedConfirmation} to confirm this soft delete.`);
-      return;
-    }
-
     setIsDeleting(true);
-    await deleteCaseRecord(caseDetail.caseId, deleteReason.trim());
+    await deleteCaseRecord(caseDetail.caseId);
     router.push("/cases/recycle-bin");
   }
 
@@ -294,12 +282,12 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
             role="dialog"
           >
             <div className="confirm-dialog__header">
-              <p className="page-eyebrow">Soft delete case record</p>
-              <h2 id="delete-case-dialog-heading">Move Case {caseDetail.caseId} to recycle bin?</h2>
+              <p className="page-eyebrow">Delete case record</p>
+              <h2 id="delete-case-dialog-heading">Delete Case {caseDetail.caseId}?</h2>
             </div>
             <p>
-              This action removes the case from the active risk queue and reports, but keeps the synthetic case, claim,
-              notes, and findings available for restore.
+              This action removes the case from the active risk queue and reports. The underlying synthetic claim, notes,
+              and findings are retained.
             </p>
             <dl className="confirm-dialog__facts">
               <div>
@@ -315,31 +303,9 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 <dd>{caseDetail.riskLevel}</dd>
               </div>
             </dl>
-            <UsaFormGroup id="delete-reason" label="Reason for soft delete">
-              <textarea
-                className="usa-textarea"
-                id="delete-reason"
-                rows={3}
-                value={deleteReason}
-                onChange={(event) => setDeleteReason(event.target.value)}
-              />
-            </UsaFormGroup>
-            <UsaFormGroup id="delete-confirmation" label={`Type DELETE CASE ${caseDetail.caseId} to confirm`} error={deleteError}>
-              <input
-                aria-describedby={deleteError ? "delete-confirmation-error" : undefined}
-                autoFocus
-                className="usa-input"
-                id="delete-confirmation"
-                value={deleteConfirmation}
-                onChange={(event) => {
-                  setDeleteConfirmation(event.target.value);
-                  setDeleteError("");
-                }}
-              />
-            </UsaFormGroup>
             <div className="action-row confirm-dialog__actions">
               <UsaButton disabled={isDeleting} type="button" variant="secondary" onClick={handleDeleteCase}>
-                {isDeleting ? "Moving case..." : "Move to recycle bin"}
+                {isDeleting ? "Deleting..." : "Delete"}
               </UsaButton>
               <UsaButton disabled={isDeleting} type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
                 Cancel
