@@ -43,7 +43,7 @@ public sealed class ChatServiceTests
         await service.AddMessageAsync(
             Guid.Parse("11111111-1111-1111-1111-111111111111"),
             " demo.analyst@local ",
-            new AddChatMessageRequest(" assistant ", " ", " model ", null, null, " stop ", $" {Repeat("c", 220)} "),
+            new AddChatMessageRequest(" assistant ", " ", " model ", null, null, " stop ", $" {Repeat("c", 200)} "),
             CancellationToken.None);
 
         Assert.NotNull(repository.AddedMessageRequest);
@@ -52,6 +52,21 @@ public sealed class ChatServiceTests
         Assert.Equal("model", repository.AddedMessageRequest.Model);
         Assert.Equal("stop", repository.AddedMessageRequest.FinishReason);
         Assert.Equal(200, repository.AddedMessageRequest.ClientMessageId?.Length);
+    }
+
+    [Fact]
+    public async Task AddMessageRejectsOverlongClientMessageId()
+    {
+        var service = new ChatService(new FakeChatRepository(), new FixedClock());
+
+        var error = await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddMessageAsync(
+                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                "demo.analyst@local",
+                new AddChatMessageRequest("assistant", "", ClientMessageId: Repeat("c", 201)),
+                CancellationToken.None));
+
+        Assert.Equal("Client message id must be 200 characters or fewer.", error.Message);
     }
 
     [Fact]

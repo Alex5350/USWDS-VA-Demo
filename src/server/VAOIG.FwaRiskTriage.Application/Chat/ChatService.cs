@@ -37,7 +37,7 @@ public sealed class ChatService(IChatRepository repository, IClock clock)
                 Content = content,
                 Model = NormalizeOptional(request.Model, 100),
                 FinishReason = NormalizeOptional(request.FinishReason, 50),
-                ClientMessageId = NormalizeOptional(request.ClientMessageId, 200)
+                ClientMessageId = NormalizeClientMessageId(request.ClientMessageId)
             },
             clock.UtcNow,
             cancellationToken);
@@ -122,5 +122,27 @@ public sealed class ChatService(IChatRepository repository, IClock clock)
 
         var normalized = value.Trim();
         return normalized.Length <= maxLength ? normalized : normalized[..maxLength];
+    }
+
+    private static string? NormalizeClientMessageId(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        var normalized = value.Trim();
+
+        if (normalized.Length == 0)
+        {
+            return null;
+        }
+
+        if (normalized.Length > 200)
+        {
+            throw new ArgumentException("Client message id must be 200 characters or fewer.");
+        }
+
+        return normalized;
     }
 }

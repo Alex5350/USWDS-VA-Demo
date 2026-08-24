@@ -75,8 +75,17 @@ await runTest("persists assistant response metadata even when content is empty",
   });
 });
 
-await runTest("creates deterministic assistant message id from latest user message id", () => {
-  assert.equal(createAssistantMessageId("message-1"), "message-1:assistant");
+await runTest("creates deterministic assistant message id from latest user message id", async () => {
+  assert.match(await createAssistantMessageId("message-1"), /^assistant:[0-9a-f]{48}$/);
+});
+
+await runTest("creates non-colliding assistant message id for 200 character user id", async () => {
+  const userMessageId = "u".repeat(200);
+  const assistantMessageId = await createAssistantMessageId(userMessageId);
+
+  assert.notEqual(assistantMessageId, userMessageId);
+  assert.ok(assistantMessageId.length <= 200);
+  assert.match(assistantMessageId, /^assistant:[0-9a-f]{48}$/);
 });
 
 restoreEnv("NEXT_PUBLIC_API_BASE_URL", originalApiBaseUrl);

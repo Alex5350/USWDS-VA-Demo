@@ -132,7 +132,7 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
 
             if (existingMessage is not null)
             {
-                return existingMessage;
+                return ReturnExistingMessageOrThrowRoleConflict(existingMessage, request.Role);
             }
         }
 
@@ -166,7 +166,7 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
 
             if (existingMessage is not null)
             {
-                return existingMessage;
+                return ReturnExistingMessageOrThrowRoleConflict(existingMessage, request.Role);
             }
 
             throw;
@@ -353,6 +353,16 @@ public sealed class EfChatRepository(FwaRiskTriageDbContext dbContext) : IChatRe
                 x.FinishReason,
                 x.CreatedAt))
             .FirstOrDefaultAsync(cancellationToken);
+
+    private static ChatMessageDto ReturnExistingMessageOrThrowRoleConflict(ChatMessageDto existingMessage, string role)
+    {
+        if (existingMessage.Role != role)
+        {
+            throw new InvalidOperationException("Client message id already exists for a different message role.");
+        }
+
+        return existingMessage;
+    }
 
     private static ChatSessionDto ToDto(ChatSession session) => new(
         session.PublicId,

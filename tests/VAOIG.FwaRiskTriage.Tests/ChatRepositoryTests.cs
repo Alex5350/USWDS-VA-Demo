@@ -139,6 +139,38 @@ public sealed class ChatRepositoryTests
     }
 
     [Fact]
+    public async Task AddMessageRejectsDuplicateClientMessageIdWithDifferentRole()
+    {
+        await using var dbContext = CreateDbContext();
+        var repository = new EfChatRepository(dbContext);
+        var chatId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        await repository.CreateSessionAsync(
+            chatId,
+            "demo.analyst@local",
+            "Open cases",
+            new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        await repository.AddMessageAsync(
+            chatId,
+            "demo.analyst@local",
+            new AddChatMessageRequest("user", "First write", ClientMessageId: "message-1"),
+            new DateTime(2026, 6, 3, 14, 1, 0, DateTimeKind.Utc),
+            CancellationToken.None);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            repository.AddMessageAsync(
+                chatId,
+                "demo.analyst@local",
+                new AddChatMessageRequest("assistant", "Different role", ClientMessageId: "message-1"),
+                new DateTime(2026, 6, 3, 14, 2, 0, DateTimeKind.Utc),
+                CancellationToken.None));
+
+        Assert.Equal("Client message id already exists for a different message role.", error.Message);
+    }
+
+    [Fact]
     public void ChatSessionPublicIdHasUniqueIndex()
     {
         using var dbContext = CreateDbContext();

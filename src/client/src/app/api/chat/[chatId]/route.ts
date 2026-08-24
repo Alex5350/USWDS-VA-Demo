@@ -1,11 +1,4 @@
-import {
-  consumeStream,
-  convertToModelMessages,
-  safeValidateUIMessages,
-  streamText,
-  type InferUITools,
-  type UIMessage
-} from "ai";
+import { convertToModelMessages, safeValidateUIMessages, streamText, type InferUITools, type UIMessage } from "ai";
 import { NextResponse } from "next/server";
 
 import { createCaseAssistantOptions } from "./agent";
@@ -15,6 +8,7 @@ import {
   persistLatestUserMessage,
   type AssistantMessageMetadata
 } from "./persistence";
+import { consumeChatSseStream, getChatStreamErrorMessage } from "./stream-errors";
 import type { CaseAssistantTools } from "./tools";
 
 export const runtime = "nodejs";
@@ -85,7 +79,7 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     tools: options.tools,
     ignoreIncompleteToolCalls: true
   });
-  const assistantMessageId = createAssistantMessageId(getLatestUserMessageId(validatedMessages) ?? crypto.randomUUID());
+  const assistantMessageId = await createAssistantMessageId(getLatestUserMessageId(validatedMessages) ?? crypto.randomUUID());
   let assistantMetadata: AssistantMessageMetadata = {};
 
   const result = streamText({
@@ -104,7 +98,8 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
   return result.toUIMessageStreamResponse({
     originalMessages: validatedMessages,
     generateMessageId: () => assistantMessageId,
-    consumeSseStream: consumeStream,
+    consumeSseStream: consumeChatSseStream,
+    onError: getChatStreamErrorMessage,
     onFinish: async ({ responseMessage, finishReason }) => {
       await persistAssistantResponseMessage(chatId, demoUserEmail, responseMessage, {
         ...assistantMetadata,

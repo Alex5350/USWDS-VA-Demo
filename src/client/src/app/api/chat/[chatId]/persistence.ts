@@ -1,8 +1,6 @@
 import type { UIMessage } from "ai";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
-const maxClientMessageIdLength = 200;
-
 type PersistedChatRole = "user" | "assistant";
 
 type PersistChatMessageRequest = {
@@ -64,9 +62,10 @@ export async function persistAssistantResponseMessage<TMessage extends UIMessage
   });
 }
 
-export function createAssistantMessageId(latestUserMessageId: string) {
-  const candidate = `${latestUserMessageId}:assistant`;
-  return candidate.length <= maxClientMessageIdLength ? candidate : candidate.slice(0, maxClientMessageIdLength);
+export async function createAssistantMessageId(latestUserMessageId: string) {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(latestUserMessageId));
+  const hex = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `assistant:${hex.slice(0, 48)}`;
 }
 
 export function createChatPersistenceError() {

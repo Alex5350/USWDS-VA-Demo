@@ -100,6 +100,10 @@ public static class ChatEndpoints
                 {
                     return Results.BadRequest(ex.Message);
                 }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.BadRequest(ex.Message);
+                }
             })
             .RequireAuthorization(Policies.CanViewRiskQueue);
 
