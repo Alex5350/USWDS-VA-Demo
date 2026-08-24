@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 const defaultDemoUserEmail = "demo.readonly@local";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
 
 type ChatRouteContext = {
   params: Promise<{
@@ -22,6 +23,17 @@ type ChatRouteBody = {
 };
 
 type CaseAssistantUIMessage = UIMessage<unknown, never, InferUITools<CaseAssistantTools>>;
+
+type PersistedChatRole = "user" | "assistant";
+
+type PersistChatMessageRequest = {
+  role: PersistedChatRole;
+  content: string;
+  model?: string | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
+  finishReason?: string | null;
+};
 
 export async function POST(request: Request, { params }: ChatRouteContext) {
   const { chatId } = await params;
@@ -49,6 +61,14 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     return NextResponse.json({ error: "Request body field 'messages' must contain valid UI messages." }, { status: 400 });
   }
 
+  const validatedMessages = validation.data;
+
+  try {
+    await persistLatestUserMessage(chatId, demoUserEmail, validatedMessages);
+  } catch {
+    return NextResponse.json({ error: "Unable to persist chat message." }, { status: 502 });
+  }
+
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return NextResponse.json(
       {
@@ -59,7 +79,6 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
     );
   }
 
-  const validatedMessages = validation.data;
   const messagesWithoutIds = stripMessageIds(validatedMessages);
   const modelMessages = await convertToModelMessages(messagesWithoutIds, {
     tools: options.tools,
@@ -68,12 +87,83 @@ export async function POST(request: Request, { params }: ChatRouteContext) {
 
   const result = streamText({
     ...options,
-    messages: modelMessages
+    messages: modelMessages,
+    onFinish: async (event) => {
+      const content = event.text.trim();
+
+      if (!content) {
+        return;
+      }
+
+      await persistChatMessage(chatId, demoUserEmail, {
+        role: "assistant",
+        content,
+        model: event.model.modelId,
+        promptTokens: event.usage.inputTokens ?? null,
+        completionTokens: event.usage.outputTokens ?? null,
+        finishReason: event.finishReason
+      });
+    }
   });
 
   return result.toUIMessageStreamResponse({
     originalMessages: validatedMessages
   });
+}
+
+async function persistLatestUserMessage(
+  chatId: string,
+  demoUserEmail: string,
+  messages: CaseAssistantUIMessage[]
+) {
+  const latestMessage = messages.at(-1);
+
+  if (latestMessage?.role !== "user") {
+    return;
+  }
+
+  const content = getTextPartContent(latestMessage.parts).trim();
+
+  if (!content) {
+    return;
+  }
+
+  await persistChatMessage(chatId, demoUserEmail, {
+    role: "user",
+    content,
+    model: null
+  });
+}
+
+async function persistChatMessage(chatId: string, demoUserEmail: string, request: PersistChatMessageRequest) {
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/chat/sessions/${encodeURIComponent(chatId)}/messages`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Demo-User": demoUserEmail
+      },
+      body: JSON.stringify(request)
+    });
+
+    if (!response.ok) {
+      throw createChatPersistenceError();
+    }
+  } catch {
+    throw createChatPersistenceError();
+  }
+}
+
+function createChatPersistenceError() {
+  return new Error("Unable to persist chat message.");
+}
+
+function getTextPartContent(parts: CaseAssistantUIMessage["parts"]) {
+  return parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("");
 }
 
 async function readBody(request: Request): Promise<ChatRouteBody | Response> {
