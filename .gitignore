@@ -54,3 +54,4 @@ docker-data/
 logs/
 .playwright-cli/
 .superpowers/
+.worktrees/
