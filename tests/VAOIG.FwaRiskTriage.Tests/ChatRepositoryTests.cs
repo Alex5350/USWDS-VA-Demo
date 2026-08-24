@@ -69,6 +69,81 @@ public sealed class ChatRepositoryTests
         Assert.Single(saved.ContextItems);
     }
 
+    [Fact]
+    public void ChatSessionPublicIdHasUniqueIndex()
+    {
+        using var dbContext = CreateDbContext();
+
+        var entity = dbContext.Model.FindEntityType(typeof(ChatSession));
+        Assert.NotNull(entity);
+        Assert.Contains(entity.GetIndexes(), index =>
+            index.IsUnique &&
+            HasProperties(index.Properties, nameof(ChatSession.PublicId)));
+    }
+
+    [Fact]
+    public void ChatMessagesHaveSessionScopedUniqueMessageIdentity()
+    {
+        using var dbContext = CreateDbContext();
+
+        var entity = dbContext.Model.FindEntityType(typeof(ChatMessage));
+        Assert.NotNull(entity);
+
+        var hasUniqueIndex = entity.GetIndexes().Any(index =>
+            index.IsUnique &&
+            HasProperties(index.Properties, nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ChatMessageId)));
+        var hasUniqueKey = entity.GetKeys().Any(key =>
+            HasProperties(key.Properties, nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ChatMessageId)));
+
+        Assert.True(hasUniqueIndex || hasUniqueKey);
+    }
+
+    [Fact]
+    public void ChatToolCallsReferenceMessagesThroughOptionalSessionScopedForeignKey()
+    {
+        using var dbContext = CreateDbContext();
+
+        var entity = dbContext.Model.FindEntityType(typeof(ChatToolCall));
+        Assert.NotNull(entity);
+
+        var chatMessageId = entity.FindProperty(nameof(ChatToolCall.ChatMessageId));
+        Assert.NotNull(chatMessageId);
+        Assert.True(chatMessageId.IsNullable);
+
+        var foreignKey = Assert.Single(entity.GetForeignKeys(), foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(ChatMessage) &&
+            HasProperties(foreignKey.Properties, nameof(ChatToolCall.ChatSessionId), nameof(ChatToolCall.ChatMessageId)));
+        Assert.False(foreignKey.IsRequired);
+        Assert.Equal(
+            [nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ChatMessageId)],
+            foreignKey.PrincipalKey.Properties.Select(property => property.Name));
+
+        var resultSummary = entity.FindProperty(nameof(ChatToolCall.ResultSummary));
+        Assert.NotNull(resultSummary);
+        Assert.Equal(2000, resultSummary.GetMaxLength());
+    }
+
+    [Fact]
+    public void ChatContextItemsReferenceMessagesThroughOptionalSessionScopedForeignKey()
+    {
+        using var dbContext = CreateDbContext();
+
+        var entity = dbContext.Model.FindEntityType(typeof(ChatContextItem));
+        Assert.NotNull(entity);
+
+        var chatMessageId = entity.FindProperty(nameof(ChatContextItem.ChatMessageId));
+        Assert.NotNull(chatMessageId);
+        Assert.True(chatMessageId.IsNullable);
+
+        var foreignKey = Assert.Single(entity.GetForeignKeys(), foreignKey =>
+            foreignKey.PrincipalEntityType.ClrType == typeof(ChatMessage) &&
+            HasProperties(foreignKey.Properties, nameof(ChatContextItem.ChatSessionId), nameof(ChatContextItem.ChatMessageId)));
+        Assert.False(foreignKey.IsRequired);
+        Assert.Equal(
+            [nameof(ChatMessage.ChatSessionId), nameof(ChatMessage.ChatMessageId)],
+            foreignKey.PrincipalKey.Properties.Select(property => property.Name));
+    }
+
     private static FwaRiskTriageDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<FwaRiskTriageDbContext>()
@@ -76,5 +151,10 @@ public sealed class ChatRepositoryTests
             .Options;
 
         return new FwaRiskTriageDbContext(options);
+    }
+
+    private static bool HasProperties(IReadOnlyList<Microsoft.EntityFrameworkCore.Metadata.IProperty> properties, params string[] names)
+    {
+        return properties.Select(property => property.Name).SequenceEqual(names);
     }
 }

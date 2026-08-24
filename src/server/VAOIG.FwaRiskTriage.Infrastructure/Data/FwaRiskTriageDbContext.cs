@@ -192,6 +192,7 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
         {
             entity.ToTable("ChatMessages");
             entity.HasKey(x => x.ChatMessageId);
+            entity.HasAlternateKey(x => new { x.ChatSessionId, x.ChatMessageId });
             entity.HasIndex(x => new { x.ChatSessionId, x.CreatedAt });
             entity.Property(x => x.Role).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Content).IsRequired();
@@ -209,8 +210,13 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
             entity.Property(x => x.ToolName).HasMaxLength(100).IsRequired();
             entity.Property(x => x.AllowedSurface).HasMaxLength(100).IsRequired();
             entity.Property(x => x.ArgumentsJson).IsRequired();
+            entity.Property(x => x.ResultSummary).HasMaxLength(2000);
             entity.Property(x => x.ErrorMessage).HasMaxLength(1000);
-            entity.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.ChatMessageId).IsRequired(false);
+            entity.HasOne<ChatMessage>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ChatSessionId, x.ChatMessageId })
+                .HasPrincipalKey(x => new { x.ChatSessionId, x.ChatMessageId })
+                .IsRequired(false);
         });
 
         modelBuilder.Entity<ChatContextItem>(entity =>
@@ -223,7 +229,11 @@ public sealed class FwaRiskTriageDbContext(DbContextOptions<FwaRiskTriageDbConte
             entity.Property(x => x.EntityType).HasMaxLength(50).IsRequired();
             entity.Property(x => x.EntityId).HasMaxLength(100);
             entity.Property(x => x.Label).HasMaxLength(200);
-            entity.HasOne<ChatMessage>().WithMany().HasForeignKey(x => x.ChatMessageId).IsRequired(false);
+            entity.HasOne<ChatMessage>()
+                .WithMany()
+                .HasForeignKey(x => new { x.ChatSessionId, x.ChatMessageId })
+                .HasPrincipalKey(x => new { x.ChatSessionId, x.ChatMessageId })
+                .IsRequired(false);
         });
     }
 }
