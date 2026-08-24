@@ -196,6 +196,7 @@ public static class CaseEndpoints
                 UpdateCaseStatusRequest request,
                 ClaimsPrincipal user,
                 CaseWorkflowService service,
+                ICaseRepository repository,
                 CancellationToken cancellationToken) =>
             {
                 if (string.Equals(request.Status, "Referred", StringComparison.OrdinalIgnoreCase))
@@ -218,6 +219,15 @@ public static class CaseEndpoints
                     {
                         return Results.Forbid();
                     }
+
+                    return Results.BadRequest("Use the case escalation action and provide a justification.");
+                }
+
+                var currentStatus = await repository.GetCaseStatusAsync(caseId, cancellationToken);
+                if (string.Equals(currentStatus, "Escalated", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(request.Status, "Escalated", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.BadRequest("Use the case de-escalation action and provide a justification.");
                 }
 
                 await service.UpdateStatusAsync(caseId, request.Status, cancellationToken);
@@ -237,12 +247,18 @@ public static class CaseEndpoints
 
         group.MapPut("/{caseId:int}/escalate", async (
                 int caseId,
+                CaseWorkflowJustificationRequest request,
                 ClaimsPrincipal user,
                 ICaseRepository repository,
                 IAuditRepository auditRepository,
                 IClock clock,
                 CancellationToken cancellationToken) =>
             {
+                if (string.IsNullOrWhiteSpace(request.Justification))
+                {
+                    return Results.BadRequest("Escalation justification is required.");
+                }
+
                 var changed = await repository.EscalateAsync(caseId, clock.UtcNow, cancellationToken);
                 if (!changed)
                 {
@@ -250,12 +266,62 @@ public static class CaseEndpoints
                 }
 
                 var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                var displayName = user.FindFirstValue(ClaimTypes.Name) ?? actor;
+                var justification = request.Justification.Trim();
+                await repository.AddNoteAsync(
+                    caseId,
+                    $"Escalation justification: {justification}",
+                    displayName,
+                    clock.UtcNow,
+                    cancellationToken);
                 await auditRepository.RecordAsync(
                     actor,
                     "CaseRecordEscalated",
                     "CaseFile",
                     caseId.ToString(),
-                    $"Escalated case {caseId} for supervisory review.",
+                    $"Escalated case {caseId} for supervisory review. Justification: {justification}",
+                    clock.UtcNow,
+                    cancellationToken);
+
+                return Results.NoContent();
+            })
+            .RequireAuthorization(Policies.CanEscalateCase);
+
+        group.MapPut("/{caseId:int}/de-escalate", async (
+                int caseId,
+                CaseWorkflowJustificationRequest request,
+                ClaimsPrincipal user,
+                ICaseRepository repository,
+                IAuditRepository auditRepository,
+                IClock clock,
+                CancellationToken cancellationToken) =>
+            {
+                if (string.IsNullOrWhiteSpace(request.Justification))
+                {
+                    return Results.BadRequest("De-escalation justification is required.");
+                }
+
+                var changed = await repository.DeEscalateAsync(caseId, clock.UtcNow, cancellationToken);
+                if (!changed)
+                {
+                    return Results.NotFound();
+                }
+
+                var actor = user.FindFirstValue(ClaimTypes.Email) ?? "demo.unknown@local";
+                var displayName = user.FindFirstValue(ClaimTypes.Name) ?? actor;
+                var justification = request.Justification.Trim();
+                await repository.AddNoteAsync(
+                    caseId,
+                    $"De-escalation justification: {justification}",
+                    displayName,
+                    clock.UtcNow,
+                    cancellationToken);
+                await auditRepository.RecordAsync(
+                    actor,
+                    "CaseRecordDeEscalated",
+                    "CaseFile",
+                    caseId.ToString(),
+                    $"De-escalated case {caseId}. Justification: {justification}",
                     clock.UtcNow,
                     cancellationToken);
 

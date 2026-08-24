@@ -17,6 +17,7 @@ public interface ICaseRepository
     Task<bool> RestoreCaseRecordAsync(int caseId, string? deletedByScope, CancellationToken cancellationToken);
     Task<bool> UpdateStatusAsync(int caseId, string status, DateTime changedAt, CancellationToken cancellationToken);
     Task<bool> EscalateAsync(int caseId, DateTime changedAt, CancellationToken cancellationToken);
+    Task<bool> DeEscalateAsync(int caseId, DateTime changedAt, CancellationToken cancellationToken);
     Task<CreateCaseRecordResponse> CreateCaseRecordAsync(
         CreateCaseRecordRequest request,
         string createdBy,

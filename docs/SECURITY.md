@@ -40,7 +40,7 @@ The `X-Demo-User` header is intentionally easy to switch for demonstrations. It 
 | Change case status | No | Yes | Yes | Yes | Yes |
 | Mark case referred | No | No | Yes | Yes | Yes |
 | Create case record | No | Yes | Yes | Yes | Yes |
-| Escalate case | No | Yes | Yes | Yes | Yes |
+| Escalate/de-escalate case with justification | No | Yes | Yes | Yes | Yes |
 | Manage providers | No | No | Yes | Yes | Yes |
 | Manage procedure codes | No | No | No | Yes | Yes |
 | Edit risk rules | No | No | No | No | Yes |
@@ -81,7 +81,7 @@ Audit events are written for:
 
 - Manual case record creation
 - Case record updates and deletions
-- Case escalation
+- Case escalation and de-escalation with justification
 - Provider administration changes
 - Procedure-code administration changes
 - Demo permission updates

@@ -131,6 +131,7 @@ Show:
 - Related synthetic hotline complaints
 - Analyst notes
 - Status update
+- Escalate and de-escalate actions that require a persisted justification
 
 Emphasize explainability: every score contribution has a human-readable explanation.
 

@@ -239,6 +239,21 @@ public sealed class EfCaseRepository(FwaRiskTriageDbContext dbContext) : ICaseRe
         return true;
     }
 
+    public async Task<bool> DeEscalateAsync(int caseId, DateTime changedAt, CancellationToken cancellationToken)
+    {
+        var caseFile = await dbContext.CaseFiles.FirstOrDefaultAsync(x => x.CaseId == caseId && !x.IsDeleted, cancellationToken);
+        if (caseFile is null || !string.Equals(caseFile.Status, "Escalated", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        caseFile.Status = "UnderReview";
+        caseFile.Priority = "High";
+        caseFile.ClosedDate = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<CreateCaseRecordResponse> CreateCaseRecordAsync(
         CreateCaseRecordRequest request,
         string createdBy,

@@ -171,8 +171,8 @@ Request:
 }
 ```
 
-Marking a case `Referred` should require `CanReferCase`.
-Marking a case `Escalated` should require `CanEscalateCase`.
+Marking a case `Referred` requires `CanReferCase`.
+Escalation and de-escalation must use the dedicated workflow endpoints below so a justification is persisted with the case.
 
 ## Escalate Case
 
@@ -182,7 +182,33 @@ PUT /api/cases/{caseId}/escalate
 
 Policy: `CanEscalateCase`
 
-Updates the case status to `Escalated`, raises priority to `Critical`, and records an audit event.
+Request:
+
+```json
+{
+  "justification": "Risk indicators require supervisory review before referral decision."
+}
+```
+
+Updates the case status to `Escalated`, raises priority to `Critical`, adds the justification to case notes, and records an audit event.
+
+## De-escalate Case
+
+```http
+PUT /api/cases/{caseId}/de-escalate
+```
+
+Policy: `CanEscalateCase`
+
+Request:
+
+```json
+{
+  "justification": "Additional review resolved the escalation concern; continue standard analyst review."
+}
+```
+
+Moves an escalated case back to `UnderReview`, adds the justification to case notes, and records an audit event.
 
 ## Risk Rules
 

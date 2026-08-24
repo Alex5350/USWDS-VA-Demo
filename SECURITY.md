@@ -23,7 +23,7 @@ For an interview or evaluation setting, report vulnerabilities directly to the r
 - React output encoding should be preserved by avoiding unsafe HTML injection.
 - CORS should be restricted to the local frontend origin during development.
 - Reports and exports should include only synthetic data.
-- Manual case record creation, case editing, case soft deletion, recycle-bin restoration, escalation, provider administration, procedure-code administration, permission changes, and audit review are demo-only workflows.
+- Manual case record creation, case editing, case soft deletion, recycle-bin restoration, escalation, de-escalation, provider administration, procedure-code administration, permission changes, and audit review are demo-only workflows.
 
 ## Demo Authentication Warning
 
@@ -31,7 +31,7 @@ The mock `X-Demo-User` header is intentionally easy to switch for interview demo
 
 Administrators can assign synthetic permission overrides to fake demo users and view audit events. This is not production user provisioning, governance, or immutable audit logging.
 
-Analysts, Investigators, Supervisors, and Administrators can create, edit, delete, and restore synthetic case records. Deletion is implemented as soft deletion so linked synthetic claims, findings, and notes are retained. Analysts and Investigators can restore their own deleted case records; Supervisors and Administrators can review and restore the broader deleted-record queue. Investigators, Supervisors, and Administrators can manage synthetic providers. Supervisors and Administrators can manage procedure-code reference data. These permissions are intended to demonstrate policy-based authorization only.
+Analysts, Investigators, Supervisors, and Administrators can create, edit, delete, restore, escalate, and de-escalate synthetic case records. Escalation and de-escalation require a justification that is persisted as a case note and audit event. Deletion is implemented as soft deletion so linked synthetic claims, findings, and notes are retained. Analysts and Investigators can restore their own deleted case records; Supervisors and Administrators can review and restore the broader deleted-record queue. Investigators, Supervisors, and Administrators can manage synthetic providers. Supervisors and Administrators can manage procedure-code reference data. These permissions are intended to demonstrate policy-based authorization only.
 
 ## Synthetic Data Statement
 

@@ -83,6 +83,12 @@ public sealed class CaseWorkflowTests
             return Task.FromResult(true);
         }
 
+        public Task<bool> DeEscalateAsync(int caseId, DateTime changedAt, CancellationToken cancellationToken)
+        {
+            Status = "UnderReview";
+            return Task.FromResult(true);
+        }
+
         public Task<CreateCaseRecordResponse> CreateCaseRecordAsync(
             CreateCaseRecordRequest request,
             string createdBy,

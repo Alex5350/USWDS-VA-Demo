@@ -868,12 +868,24 @@ export async function restoreCaseRecord(caseId: number) {
   );
 }
 
-export async function escalateCase(caseId: number) {
+export async function escalateCase(caseId: number, justification: string) {
   return requestJson<{ ok: boolean }>(
     `/api/cases/${caseId}/escalate`,
     { ok: true },
     {
-      method: "PUT"
+      method: "PUT",
+      body: JSON.stringify({ justification })
+    }
+  );
+}
+
+export async function deEscalateCase(caseId: number, justification: string) {
+  return requestJson<{ ok: boolean }>(
+    `/api/cases/${caseId}/de-escalate`,
+    { ok: true },
+    {
+      method: "PUT",
+      body: JSON.stringify({ justification })
     }
   );
 }

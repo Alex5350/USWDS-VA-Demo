@@ -66,6 +66,8 @@ public sealed record AddCaseNoteRequest(string NoteText, string? CreatedBy);
 
 public sealed record UpdateCaseStatusRequest(string Status);
 
+public sealed record CaseWorkflowJustificationRequest(string Justification);
+
 public sealed record DeleteCaseRecordRequest(string? Reason);
 
 public sealed record UpdateCaseRecordRequest(

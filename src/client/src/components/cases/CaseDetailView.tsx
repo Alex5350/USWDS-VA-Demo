@@ -12,6 +12,7 @@ import { UsaFormGroup } from "@/components/uswds/UsaFormGroup";
 import { UsaTag } from "@/components/uswds/UsaTag";
 import {
   addCaseNote,
+  deEscalateCase,
   deleteCaseRecord,
   escalateCase,
   type CaseDetail,
@@ -25,6 +26,8 @@ type CaseDetailViewProps = {
   caseId: number;
 };
 
+type EscalationAction = "escalate" | "de-escalate";
+
 export function CaseDetailView({ caseId }: CaseDetailViewProps) {
   const router = useRouter();
   const { user, hasPermission } = useDemoUser();
@@ -35,6 +38,10 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
   const [noteError, setNoteError] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [escalationAction, setEscalationAction] = useState<EscalationAction | null>(null);
+  const [escalationJustification, setEscalationJustification] = useState("");
+  const [escalationError, setEscalationError] = useState("");
+  const [isSubmittingEscalation, setIsSubmittingEscalation] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -62,8 +69,13 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       return;
     }
 
-    if (status === "Escalated") {
-      await handleEscalate();
+    if (status === "Escalated" && caseDetail.status !== "Escalated") {
+      openEscalationDialog("escalate");
+      return;
+    }
+
+    if (caseDetail.status === "Escalated" && status !== "Escalated") {
+      openEscalationDialog("de-escalate");
       return;
     }
 
@@ -102,15 +114,51 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
     setMessage("Case note added.");
   }
 
-  async function handleEscalate() {
+  function openEscalationDialog(action: EscalationAction) {
     if (!caseDetail || !hasPermission("CanEscalateCase")) {
       return;
     }
 
-    await escalateCase(caseDetail.caseId);
-    setCaseDetail({ ...caseDetail, status: "Escalated", priority: "Critical" });
-    setStatus("Escalated");
-    setMessage("Case escalated for supervisory review.");
+    setEscalationAction(action);
+    setEscalationJustification("");
+    setEscalationError("");
+  }
+
+  async function handleEscalationSubmit() {
+    if (!caseDetail || !escalationAction || !hasPermission("CanEscalateCase")) {
+      return;
+    }
+
+    const justification = escalationJustification.trim();
+    if (!justification) {
+      setEscalationError("Enter a justification before submitting.");
+      return;
+    }
+
+    setIsSubmittingEscalation(true);
+    try {
+      if (escalationAction === "escalate") {
+        await escalateCase(caseDetail.caseId, justification);
+      } else {
+        await deEscalateCase(caseDetail.caseId, justification);
+      }
+
+      const refreshed = await getCaseDetail(caseDetail.caseId);
+      setCaseDetail(refreshed);
+      setStatus(refreshed.status);
+      setMessage(
+        escalationAction === "escalate"
+          ? "Case escalated with justification recorded."
+          : "Case de-escalated with justification recorded."
+      );
+      setEscalationAction(null);
+      setEscalationJustification("");
+      setEscalationError("");
+    } catch {
+      setEscalationError("The workflow action could not be saved. Try again.");
+    } finally {
+      setIsSubmittingEscalation(false);
+    }
   }
 
   function openDeleteDialog() {
@@ -246,9 +294,17 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 disabled={!hasPermission("CanEscalateCase") || caseDetail.status === "Escalated"}
                 type="button"
                 variant="outline"
-                onClick={handleEscalate}
+                onClick={() => openEscalationDialog("escalate")}
               >
                 Escalate
+              </UsaButton>
+              <UsaButton
+                disabled={!hasPermission("CanEscalateCase") || caseDetail.status !== "Escalated"}
+                type="button"
+                variant="outline"
+                onClick={() => openEscalationDialog("de-escalate")}
+              >
+                De-escalate
               </UsaButton>
               {hasPermission("CanEditCase") ? (
                 <UsaButton href={`/cases/${caseDetail.caseId}/edit`} variant="outline">
@@ -305,6 +361,78 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
                 {isDeleting ? "Deleting..." : "Delete"}
               </UsaButton>
               <UsaButton disabled={isDeleting} type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancel
+              </UsaButton>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {escalationAction ? (
+        <div className="modal-scrim" role="presentation">
+          <section
+            aria-labelledby="escalation-dialog-heading"
+            aria-modal="true"
+            className="confirm-dialog"
+            role="dialog"
+          >
+            <div className="confirm-dialog__header">
+              <p className="page-eyebrow">Workflow justification</p>
+              <h2 id="escalation-dialog-heading">
+                {escalationAction === "escalate"
+                  ? `Escalate Case ${caseDetail.caseId}?`
+                  : `De-escalate Case ${caseDetail.caseId}?`}
+              </h2>
+            </div>
+            <p>
+              Enter the rationale for this workflow decision. The justification will be saved to the case notes and audit
+              history.
+            </p>
+            <dl className="confirm-dialog__facts">
+              <div>
+                <dt>Current status</dt>
+                <dd>{caseDetail.status}</dd>
+              </div>
+              <div>
+                <dt>Risk score</dt>
+                <dd>{caseDetail.riskScore}</dd>
+              </div>
+              <div>
+                <dt>Assigned to</dt>
+                <dd>{caseDetail.assignedTo ?? "Unassigned"}</dd>
+              </div>
+            </dl>
+            <UsaFormGroup id="escalation-justification" label="Justification" error={escalationError}>
+              <textarea
+                aria-describedby={escalationError ? "escalation-justification-error" : undefined}
+                autoFocus
+                className="usa-textarea"
+                id="escalation-justification"
+                rows={4}
+                value={escalationJustification}
+                onChange={(event) => {
+                  setEscalationJustification(event.target.value);
+                  setEscalationError("");
+                }}
+              />
+            </UsaFormGroup>
+            <div className="action-row confirm-dialog__actions">
+              <UsaButton disabled={isSubmittingEscalation} type="button" onClick={handleEscalationSubmit}>
+                {isSubmittingEscalation
+                  ? "Saving..."
+                  : escalationAction === "escalate"
+                    ? "Escalate"
+                    : "De-escalate"}
+              </UsaButton>
+              <UsaButton
+                disabled={isSubmittingEscalation}
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStatus(caseDetail.status);
+                  setEscalationAction(null);
+                }}
+              >
                 Cancel
               </UsaButton>
             </div>
