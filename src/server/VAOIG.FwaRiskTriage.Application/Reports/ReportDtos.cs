@@ -26,10 +26,20 @@ public sealed record CaseAgingDto(
     int Days31To60,
     int Days61Plus);
 
-public sealed record PowerBiEmbedConfigDto(
-    bool Enabled,
-    string Mode,
-    string Message,
-    string? EmbedUrl = null,
-    string? ReportId = null,
-    string? DatasetId = null);
+public sealed record ReportSummaryDto(
+    int ClaimsReviewed,
+    int ReviewCandidates,
+    int CriticalCases,
+    decimal EstimatedQuestionedCost,
+    int ProviderCount,
+    decimal AverageRiskScore,
+    int OpenCases);
+
+public sealed record ReportFilterQuery(
+    DateOnly? FromDate,
+    DateOnly? ToDate,
+    string? Status,
+    int? ProviderId,
+    string? ProviderType,
+    string? State,
+    string? Search);

@@ -25,7 +25,16 @@ const navItems: NavItem[] = [
     ]
   },
   { href: "/rules", label: "Rules", permission: "CanViewRiskQueue" },
-  { href: "/reports", label: "Reports", permission: "CanViewDashboard" },
+  {
+    href: "/reports",
+    label: "Reports",
+    permission: "CanViewDashboard",
+    children: [
+      { href: "/reports/provider-risk", label: "Provider risk", permission: "CanViewDashboard" },
+      { href: "/reports/questioned-cost", label: "Questioned cost", permission: "CanViewDashboard" },
+      { href: "/reports/case-aging", label: "Case aging", permission: "CanViewDashboard" }
+    ]
+  },
   { href: "/admin/providers", label: "Provider admin", permission: "CanManageProviders" },
   { href: "/admin/procedure-codes", label: "Procedure code admin", permission: "CanManageProcedureCodes" },
   { href: "/admin/security", label: "Admin security", permission: "CanViewAdmin" }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ReportsView } from "@/components/reports/ReportsView";
+import { ReportWorkbenchView } from "@/components/reports/ReportWorkbenchView";
 
 export const metadata: Metadata = {
   title: "Reports"
@@ -11,11 +11,11 @@ export default function ReportsPage() {
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Power BI-ready reporting"
-        title="Reports"
-        description="SQL-backed reporting views, CSV export actions, trend summaries, and a placeholder for future Power BI embedding."
+        eyebrow="SQL-backed reporting"
+        title="Reporting Command Center"
+        description="Filtered SQL-backed reporting with executive metrics, provider concentration, questioned cost trends, case aging, and CSV/PDF export actions."
       />
-      <ReportsView />
+      <ReportWorkbenchView kind="command-center" />
     </div>
   );
 }

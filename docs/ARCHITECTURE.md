@@ -45,6 +45,9 @@ Core routes:
 - `/cases/[caseId]`
 - `/rules`
 - `/reports`
+- `/reports/provider-risk`
+- `/reports/questioned-cost`
+- `/reports/case-aging`
 - `/admin/providers`
 - `/admin/procedure-codes`
 - `/admin/security`
@@ -63,7 +66,7 @@ SQL Server is the primary data store.
 
 ## Reporting
 
-Power BI embedding is represented by an abstraction and disabled placeholder endpoint in demo mode. SQL-backed reporting is the fallback and is fully reviewable through views and procedures.
+Reporting is SQL-backed and fully reviewable through views, procedures, Dapper repositories, accessible charts, accessible tables, filtered report pages, CSV exports, and print-to-PDF output. Report pages share a common filter model for date range, workflow status, provider, provider type, state or territory, and provider search.
 
 ## Security Boundary
 

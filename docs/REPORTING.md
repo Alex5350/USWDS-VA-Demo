@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The reporting layer supports executive summary metrics, analyst drill-down, export-ready datasets, and a future Power BI Embedded integration.
+The reporting layer supports executive summary metrics, analyst drill-down, export-ready datasets, accessible tables, charted trend summaries, filtered report pages, CSV exports, and print-to-PDF output.
 
 Demo reporting must not present risk indicators as confirmed fraud, waste, abuse, or misconduct. Reports should use triage language such as potential risk, review candidate, estimated questioned cost, and analyst review recommended.
 
@@ -53,6 +53,10 @@ Filters:
 
 - State
 - Provider type
+- Date range
+- Case status
+- Provider
+- Provider search
 
 ## Questioned Cost Trend
 
@@ -65,6 +69,15 @@ Filters:
 
 Charts built from this data must include an accessible text summary and table alternative.
 
+Filters:
+
+- Date range
+- Case status
+- Provider
+- Provider type
+- State or territory
+- Provider search
+
 ## Case Aging
 
 `vw_CaseAging` returns case counts by status and aging bucket:
@@ -73,6 +86,15 @@ Charts built from this data must include an accessible text summary and table al
 - 16 to 30 days
 - 31 to 60 days
 - 61 or more days
+
+Filters:
+
+- Date range
+- Case status
+- Provider
+- Provider type
+- State or territory
+- Provider search
 
 ## Risk Queue Export
 
@@ -85,44 +107,33 @@ Charts built from this data must include an accessible text summary and table al
 
 The stored procedure uses parameters for filters. Application code should pass parameters through Dapper and should not concatenate user input into SQL strings.
 
-## Power BI-Ready Design
+## Report Pages
 
-The API should expose:
+The frontend exposes focused report workspaces:
 
-```http
-GET /api/powerbi/embed-config
-```
+- `/reports`: reporting command center with filtered executive metrics, questioned cost trend, provider concentration, case status distribution, case aging, and risk queue CSV export.
+- `/reports/provider-risk`: provider concentration report with provider-level claim volume, paid amount, high-risk and critical-risk counts, estimated questioned cost, and average risk score.
+- `/reports/questioned-cost`: monthly financial trend report with total paid amount, estimated questioned cost, high-risk claims, and case count.
+- `/reports/case-aging`: workload aging report by workflow status and age bucket.
 
-Demo mode response:
+Each report page supports the same filter vocabulary:
 
-```json
-{
-  "enabled": false,
-  "mode": "demo-placeholder",
-  "message": "Power BI embedding is not configured. Displaying SQL-backed reporting dashboard instead."
-}
-```
+- From date
+- To date
+- Case status
+- Provider
+- Provider type
+- State or territory
+- Provider search
 
-Configuration keys for a future real integration:
+CSV and PDF exports must use the active filter set. PDF output is produced through a print-ready report layout and browser Save as PDF behavior.
 
-```text
-PowerBi:Enabled
-PowerBi:TenantId
-PowerBi:ClientId
-PowerBi:ClientSecret
-PowerBi:WorkspaceId
-PowerBi:ReportId
-PowerBi:DatasetId
-```
+## Frontend Reporting
 
-Secrets must be stored in user secrets, environment variables, or approved secret stores. Do not commit real Power BI credentials.
+The frontend reports page should:
 
-## Frontend Fallback
-
-The frontend `PowerBiReportFrame` component should:
-
-1. Call `/api/powerbi/embed-config`.
-2. Render an embedded report only when enabled and configured.
-3. Render SQL-backed fallback reports when disabled.
-4. Keep all tables accessible with captions and scoped headers.
-5. Provide export controls only for roles with `CanExportReports`.
+1. Render SQL-backed command-center, provider risk, questioned cost trend, and case aging reports.
+2. Keep all tables accessible with captions and scoped headers.
+3. Include text summaries for chart-like trend displays.
+4. Provide export controls only for roles with `CanExportReports`.
+5. Avoid external reporting-service dependencies for local demo readiness.

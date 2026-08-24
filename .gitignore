@@ -40,6 +40,9 @@ yarn-error.log*
 *.swo
 .DS_Store
 Thumbs.db
+~$*.docx
+~$*.pptx
+~$*.xlsx
 
 # Docker and local data
 docker-data/

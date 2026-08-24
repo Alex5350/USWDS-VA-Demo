@@ -232,32 +232,30 @@ Only Administrator should edit rule weights or enabled state.
 ## Reports
 
 ```http
+GET /api/reports/summary
 GET /api/reports/provider-risk
 GET /api/reports/questioned-cost-trend
 GET /api/reports/case-aging
 GET /api/reports/export/risk-queue.csv
+GET /api/reports/export/provider-risk.csv
+GET /api/reports/export/questioned-cost-trend.csv
+GET /api/reports/export/case-aging.csv
 ```
+
+Supported query parameters:
+
+- `fromDate`
+- `toDate`
+- `status`
+- `providerId`
+- `providerType`
+- `state`
+- `search`
 
 Policies:
 
 - Report views: authorized demo users
 - Exports: `CanExportReports`
-
-## Power BI
-
-```http
-GET /api/powerbi/embed-config
-```
-
-Demo response when embedding is not configured:
-
-```json
-{
-  "enabled": false,
-  "mode": "demo-placeholder",
-  "message": "Power BI embedding is not configured. Displaying SQL-backed reporting dashboard instead."
-}
-```
 
 ## Security Context
 

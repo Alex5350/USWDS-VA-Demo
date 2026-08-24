@@ -25,8 +25,8 @@ Included:
 - Case detail workflow
 - Explainable risk rules
 - SQL Server schema, seed data, views, and procedures
-- Power BI-ready reporting placeholder
-- CSV export path
+- SQL-backed reporting views and filtered report workspaces
+- CSV export and print-to-PDF paths
 - USWDS-based accessible frontend
 - Mock authentication and policy-based authorization
 - Windows and macOS local development through Docker Compose
@@ -37,7 +37,6 @@ Out of scope:
 - Real PHI, PII, claim, patient, veteran, provider, or government data
 - Production identity
 - Password login
-- Real Power BI tenant setup
 - Machine learning
 - Enforcement or accusation workflows
 

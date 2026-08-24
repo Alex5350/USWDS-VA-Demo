@@ -70,7 +70,6 @@ app.MapRiskRecordEndpoints();
 app.MapCaseEndpoints();
 app.MapRulesEndpoints();
 app.MapReportsEndpoints();
-app.MapPowerBiEndpoints();
 app.MapSecurityEndpoints();
 
 app.Run();

@@ -172,10 +172,24 @@ export type CaseAging = {
   days61Plus: number;
 };
 
-export type PowerBiEmbedConfig = {
-  enabled: boolean;
-  mode: string;
-  message: string;
+export type ReportFilters = {
+  fromDate?: string;
+  toDate?: string;
+  status?: string;
+  providerId?: number | string;
+  providerType?: string;
+  state?: string;
+  search?: string;
+};
+
+export type ReportSummary = {
+  claimsReviewed: number;
+  reviewCandidates: number;
+  criticalCases: number;
+  estimatedQuestionedCost: number;
+  providerCount: number;
+  averageRiskScore: number;
+  openCases: number;
 };
 
 export type CreateCaseRecordRequest = {
@@ -268,6 +282,16 @@ const mockDashboardSummary: DashboardSummary = {
   providersWithAbnormalPatterns: 43,
   openCases: 96,
   averageCaseAgeDays: 18.4
+};
+
+const mockReportSummary: ReportSummary = {
+  claimsReviewed: 1500,
+  reviewCandidates: 100,
+  criticalCases: 16,
+  estimatedQuestionedCost: 230700,
+  providerCount: 35,
+  averageRiskScore: 64.8,
+  openCases: 90
 };
 
 const mockStates: StateTerritory[] = [
@@ -696,6 +720,34 @@ function toQuery(filters: RiskQueueFilters) {
   return params.toString();
 }
 
+function reportToQuery(filters: ReportFilters = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== "" && value !== "All" && value !== 0 && value !== "0") {
+      params.set(key, String(value));
+    }
+  });
+
+  return params.toString();
+}
+
+async function requestCsv(path: string, fallback: Blob) {
+  try {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
+      cache: "no-store",
+      headers: createHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`CSV request failed with ${response.status}`);
+    }
+
+    return await response.blob();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function getDashboardSummary() {
   return requestJson<DashboardSummary>("/api/dashboard/summary", mockDashboardSummary);
 }
@@ -949,55 +1001,47 @@ export async function getAuditEvents() {
   return requestJson<AuditEvent[]>("/api/security/audit?limit=75", []);
 }
 
-export async function getProviderRiskReport() {
-  return requestJson<ProviderRiskSummary[]>("/api/reports/provider-risk", mockProviderRisk);
+export async function getReportSummary(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  return requestJson<ReportSummary>(`/api/reports/summary${query ? `?${query}` : ""}`, mockReportSummary);
 }
 
-export async function getQuestionedCostTrend() {
-  return requestJson<QuestionedCostTrend[]>("/api/reports/questioned-cost-trend", mockQuestionedCostTrend);
+export async function getProviderRiskReport(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  return requestJson<ProviderRiskSummary[]>(`/api/reports/provider-risk${query ? `?${query}` : ""}`, mockProviderRisk);
 }
 
-export async function getCaseAgingReport() {
-  return requestJson<CaseAging[]>("/api/reports/case-aging", mockCaseAging);
+export async function getQuestionedCostTrend(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  return requestJson<QuestionedCostTrend[]>(`/api/reports/questioned-cost-trend${query ? `?${query}` : ""}`, mockQuestionedCostTrend);
 }
 
-export async function getPowerBiEmbedConfig() {
-  return requestJson<PowerBiEmbedConfig>("/api/powerbi/embed-config", {
-    enabled: false,
-    mode: "demo-placeholder",
-    message: "Power BI embedding is not configured. Displaying SQL-backed reporting dashboard instead."
-  });
+export async function getCaseAgingReport(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  return requestJson<CaseAging[]>(`/api/reports/case-aging${query ? `?${query}` : ""}`, mockCaseAging);
 }
 
-export async function getRiskQueueCsv() {
-  try {
-    const response = await fetch(`${apiBaseUrl}/api/reports/export/risk-queue.csv`, {
-      cache: "no-store",
-      headers: createHeaders()
-    });
-
-    if (!response.ok) {
-      throw new Error(`CSV request failed with ${response.status}`);
-    }
-
-    return await response.blob();
-  } catch {
-    const rows = [
-      ["Case ID", "Claim ID", "Provider", "Risk Level", "Risk Score", "Estimated Questioned Cost"],
-      ...mockRiskQueue.map((item) => [
-        item.caseId,
-        item.claimId,
-        item.providerName,
-        item.riskLevel,
-        item.riskScore,
-        item.estimatedQuestionedCost
-      ])
-    ];
-    return new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
-  }
+export async function getRiskQueueCsv(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  const rows = [
+    ["Case ID", "Claim ID", "Provider", "Risk Level", "Risk Score", "Estimated Questioned Cost"],
+    ...mockRiskQueue.map((item) => [
+      item.caseId,
+      item.claimId,
+      item.providerName,
+      item.riskLevel,
+      item.riskScore,
+      item.estimatedQuestionedCost
+    ])
+  ];
+  return requestCsv(
+    `/api/reports/export/risk-queue.csv${query ? `?${query}` : ""}`,
+    new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" })
+  );
 }
 
-export async function getProviderRiskCsv() {
+export async function getProviderRiskCsv(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
   const rows = [
     [
       "Provider",
@@ -1022,5 +1066,44 @@ export async function getProviderRiskCsv() {
       item.averageRiskScore
     ])
   ];
-  return new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+  return requestCsv(
+    `/api/reports/export/provider-risk.csv${query ? `?${query}` : ""}`,
+    new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" })
+  );
+}
+
+export async function getQuestionedCostTrendCsv(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  const rows = [
+    ["Month", "Total Paid", "Estimated Questioned Cost", "High Risk Claims", "Case Count"],
+    ...mockQuestionedCostTrend.map((item) => [
+      item.month,
+      item.totalPaidAmount,
+      item.estimatedQuestionedCost,
+      item.highRiskClaimCount,
+      item.caseCount
+    ])
+  ];
+  return requestCsv(
+    `/api/reports/export/questioned-cost-trend.csv${query ? `?${query}` : ""}`,
+    new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" })
+  );
+}
+
+export async function getCaseAgingCsv(filters: ReportFilters = {}) {
+  const query = reportToQuery(filters);
+  const rows = [
+    ["Status", "0-15 days", "16-30 days", "31-60 days", "61+ days"],
+    ...mockCaseAging.map((item) => [
+      item.status,
+      item.days0To15,
+      item.days16To30,
+      item.days31To60,
+      item.days61Plus
+    ])
+  ];
+  return requestCsv(
+    `/api/reports/export/case-aging.csv${query ? `?${query}` : ""}`,
+    new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" })
+  );
 }

@@ -16,7 +16,7 @@ Screenshot placeholders for the public demo:
 - Risk queue with filters
 - Create case record intake with searchable reference data
 - Case detail with explainable risk findings
-- Reports page with Power BI placeholder and SQL-backed fallback
+- Reporting command center with filtered executive summaries, provider concentration, questioned-cost trends, case aging, CSV exports, and print-to-PDF output
 - Provider/procedure-code administration pages
 - Admin security page showing mock authorization, permission overrides, and audit events
 
@@ -26,7 +26,7 @@ Screenshot placeholders for the public demo:
 - Runtime policy: .NET 10 SDK `10.0.201` as pinned by `src/server/global.json`
 - Frontend: Bun `1.3.10`, Next.js, React, TypeScript, Sass, USWDS 3.x
 - Database: SQL Server 2022-compatible SQL
-- Reporting: SQL views, Dapper reporting queries, CSV export, Power BI-ready placeholder
+- Reporting: SQL views, Dapper reporting queries, filtered dashboards, accessible charts and tables, CSV export, print-to-PDF output
 - Local database: SQL Server 2022 in Docker Compose
 - Tests: xUnit or NUnit for backend tests
 
@@ -266,7 +266,16 @@ Real VA SSO, Login.gov, PIV/CAC, Entra ID, password login, and production user p
 
 ## Reporting
 
-The reporting layer is designed for Power BI embedding later, with SQL-backed fallback reporting now.
+The reporting layer is SQL-backed. Dapper queries read reporting views and stored procedures for executive metrics, provider risk summaries, case aging, questioned cost trend data, filtered report workspaces, and CSV exports.
+
+Included report pages:
+
+- `/reports`: reporting command center with cross-report filters and export controls
+- `/reports/provider-risk`: provider concentration, questioned cost, and average risk score analysis
+- `/reports/questioned-cost`: monthly paid amount and estimated questioned cost trend analysis
+- `/reports/case-aging`: workflow status and case aging bucket analysis
+
+Report filters support date range, case status, provider, provider type, state or territory, and provider search. CSV exports and print-to-PDF output use the active filter set.
 
 Included SQL assets:
 
@@ -276,8 +285,6 @@ Included SQL assets:
 - `database/views/vw_QuestionedCostByMonth.sql`
 - `database/procedures/sp_GetRiskQueue.sql`
 - `database/procedures/sp_GetProviderRiskReport.sql`
-
-The Power BI endpoint should return a disabled placeholder unless real credentials are configured through user secrets or environment variables.
 
 ## Accessibility
 

@@ -31,7 +31,7 @@ const primaryWorkflows = [
   {
     href: "/reports",
     label: "Reporting",
-    description: "Use SQL-backed report tables, export actions, and Power BI-ready reporting placeholders.",
+    description: "Use SQL-backed report tables, export actions, and accessible trend summaries.",
     action: "View reports"
   }
 ];

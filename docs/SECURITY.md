@@ -90,22 +90,10 @@ This is a security-awareness demo. It is not production identity governance, rea
 
 ## Secrets
 
-- Do not commit `.env`, `.env.local`, user secrets, API keys, database backups, or Power BI credentials.
+- Do not commit `.env`, `.env.local`, user secrets, API keys, or database backups.
 - Commit `.env.example` only.
 - Use environment variables or .NET user secrets for local secret values.
 - Use an approved secret store for real deployments.
-
-Power BI placeholder configuration keys:
-
-```text
-PowerBi:Enabled
-PowerBi:TenantId
-PowerBi:ClientId
-PowerBi:ClientSecret
-PowerBi:WorkspaceId
-PowerBi:ReportId
-PowerBi:DatasetId
-```
 
 ## SQL Injection Prevention
 

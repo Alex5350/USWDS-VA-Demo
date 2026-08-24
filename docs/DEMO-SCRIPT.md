@@ -157,14 +157,12 @@ Also show provider administration and procedure-code administration:
 
 Show the reports page:
 
-- Power BI placeholder
-- SQL-backed fallback reports
-- Provider risk report
-- Questioned cost trend
-- Case aging
-- Export controls
-
-Explain that Power BI credentials are intentionally not committed.
+- SQL-backed reporting command center
+- Provider risk concentration report
+- Questioned cost trend report
+- Case aging and workflow load report
+- Shared filters for date range, status, provider, provider type, state or territory, and provider search
+- CSV exports and print-to-PDF output using the active filter set
 
 ## 11. SQL Reporting Views
 
