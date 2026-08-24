@@ -44,7 +44,7 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
       if (isMounted) {
         setCaseDetail(result);
         setStatus(result.status);
-        setMessage(`Case ${result.caseId} loaded.`);
+        setMessage("");
       }
     }
 
@@ -167,9 +167,11 @@ export function CaseDetailView({ caseId }: CaseDetailViewProps) {
         </div>
       ) : null}
 
-      <p className="status-text" aria-live="polite">
-        {message}
-      </p>
+      {message ? (
+        <p className="status-text" aria-live="polite">
+          {message}
+        </p>
+      ) : null}
 
       <section className="case-summary" aria-labelledby="case-summary-heading">
         <div>
