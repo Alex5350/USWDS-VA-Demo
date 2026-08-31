@@ -1,394 +1,179 @@
 # VA OIG FWA Risk Triage & Reporting Portal
 
-Synthetic-data demo of a secure, accessible, SQL-driven Community Care fraud, waste, abuse, improper-payment, and oversight risk triage portal.
+**A synthetic-data demo that helps VA OIG analysts decide which Community Care claims, providers,
+complaints and cases deserve review first, using transparent rules and SQL-backed reporting.**
 
-This application does not determine fraud. It helps analysts prioritize claims, providers, complaints, and case work that may deserve review based on transparent business rules and SQL-backed reporting.
+[![CI](https://github.com/Alex5350/USWDS-VA-Demo/actions/workflows/ci.yml/badge.svg)](https://github.com/Alex5350/USWDS-VA-Demo/actions/workflows/ci.yml)
 
-## Synthetic Data Disclaimer
+> **Synthetic data only.** This demo does not contain real veteran, patient, claim, provider, VA,
+> PHI, PII, or government data. Risk indicators are for demonstration purposes only and do not
+> represent confirmed fraud, waste, or abuse.
 
-This demo uses synthetic data only. It does not contain real veteran, patient, claim, provider, VA, PHI, PII, or government data. Risk indicators are for demonstration purposes only and do not represent confirmed fraud, waste, or abuse.
+This application does not determine fraud. It helps analysts prioritize claims, providers,
+complaints, and case work that may deserve review based on transparent business rules and
+SQL-backed reporting.
 
-## Screenshots
+> **Two ways to read this page.** Not an engineer? Everything below the pictures stays in plain
+> language, and jargon links to the [glossary](docs/GLOSSARY.md). Engineer? The deep dive lives in
+> [TECHNICAL.md](TECHNICAL.md): architecture, request flow, and every major decision mapped back
+> to the business problem it solves.
 
-Captured from the running client (real browser, keyboard-verified pages) with its
-embedded offline dataset, the same interface you get from `bun run dev` alone:
+## The problem
 
-| Executive dashboard | Risk queue with filters |
+VA Office of Inspector General analysts who watch the Community Care program face large volumes
+of claims, authorizations, provider records, hotline complaints and open cases. Reviewing every
+record equally is impossible, so attention has to be allocated somehow. When it is allocated
+badly, two things go wrong: improper payments slip through unnoticed, or a provider gets drawn
+into a process that reads as accusation. A triage tool in this domain has to respect both risks
+at once.
+
+This portal is a synthetic-data demo of one approach: rank the workload so an analyst can see
+which records most deserve review, show why each record surfaced, and keep the language careful
+throughout. [Risk indicators](docs/GLOSSARY.md) here are prioritization signals, not
+[fraud determinations](docs/GLOSSARY.md); the application does not determine fraud, and the
+synthetic-data notice appears on every page that displays data.
+
+Walking someone through this live? [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) opens with the
+business case and closes by mapping the demo to the VA OIG Office of Data and Analytics mission.
+
+## The product in pictures
+
+Captured from the running client (real browser, keyboard-verified pages) with its embedded
+offline dataset, the same interface you get from `bun run dev` alone:
+
+| See the day at a glance: claims reviewed, risk counts, questioned cost, open cases | Work a ranked queue: filter to the records that deserve review first |
 |:---:|:---:|
 | ![Dashboard](docs/screenshots/shot-dashboard.png) | ![Risk queue](docs/screenshots/shot-risk-queue.png) |
 
-| Case detail with explainable findings | Reporting command center |
+| Ask "why did this surface?" and get the rule and the explanation | Brief leadership: filtered reports with CSV and print-to-PDF export |
 |:---:|:---:|
-| ![Case detail](docs/screenshots/shot-case.png) | ![Reports](docs/screenshots/shot-reports.png) |
+| ![Case detail with explainable findings](docs/screenshots/shot-case.png) | ![Reporting command center](docs/screenshots/shot-reports.png) |
 
-| Case intake with searchable reference data | AI case assistant (read-only tools) |
+| Capture a new review candidate with searchable reference data | Ask the read-only assistant to summarize the caseload |
 |:---:|:---:|
-| ![Case intake](docs/screenshots/shot-case-new.png) | ![Chat](docs/screenshots/shot-chat.png) |
+| ![Case intake](docs/screenshots/shot-case-new.png) | ![AI case assistant](docs/screenshots/shot-chat.png) |
 
-| Risk rules administration | Security: demo auth, overrides, audit |
+| Inspect the rules behind every score | Show who-can-do-what: demo roles, overrides, audit events |
 |:---:|:---:|
-| ![Rules](docs/screenshots/shot-rules.png) | ![Admin](docs/screenshots/shot-admin.png) |
+| ![Risk rules administration](docs/screenshots/shot-rules.png) | ![Security: demo auth, overrides, audit](docs/screenshots/shot-admin.png) |
 
 <p align="center"><img src="docs/screenshots/shot-home.png" alt="Portal landing page" width="72%"></p>
 
-## Architecture at a glance
+## What it delivers
 
-![Request flow: the USWDS client prefers the ASP.NET Core API and falls back to an embedded offline dataset; demo auth maps X-Demo-User to roles and policies; services run over a zero-dependency domain; EF Core and Dapper persist to SQL Server; the Gemini assistant streams through read-only case tools](docs/diagrams/request-flow.svg)
+- **A ranked queue, not an accusation.** Records surface with the rule that flagged them; every
+  risk finding carries a human-readable explanation, and escalation requires a persisted
+  justification. Risk indicators are prioritization signals, never fraud determinations.
+- **Reporting an analyst can defend.** Executive metrics, provider concentration, questioned
+  cost trends and case aging all come from named [SQL views and stored
+  procedures](docs/REPORTING.md); estimated questioned cost is an indicator that helps set
+  priorities, never a verdict.
+- **Accessible by law and by design.** [Section 508](docs/GLOSSARY.md) expectations on a
+  [USWDS](docs/GLOSSARY.md) foundation: keyboard-complete flows, labeled forms, visible focus,
+  text and table alternatives for every chart, no color-only meaning, and respect for
+  reduced-motion preferences.
+- **An assistant that summarizes but cannot touch.** The AI case assistant answers questions
+  about the synthetic caseload through read-only tools; it cannot create, edit, escalate or
+  delete anything, and it never replaces analyst judgment.
+- **Who-can-do-what on display.** Role-based mock authentication, from ReadOnly to
+  Administrator, makes the authorization model visible: deletions go to a restore-capable bin
+  and audit events record administrative actions.
+- **A demo that runs anywhere.** `bun run dev` alone renders the fully navigable portal from an
+  embedded offline dataset; the live path adds SQL Server, the .NET API and reporting.
 
-Full architecture detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); decisions and
-their reasoning in the [ADRs](docs/adr/); the accessibility contract in
-[docs/ACCESSIBILITY-508.md](docs/ACCESSIBILITY-508.md); and the build narrative
-(centered on the accessibility and USWDS challenges that only surfaced at runtime) in
-[docs/PROCESS-AND-CHALLENGES.md](docs/PROCESS-AND-CHALLENGES.md).
+## How the engineering solves it
 
-## Tech Stack
+Plain-terms bridge; each item links to the full story in [TECHNICAL.md](TECHNICAL.md).
 
-- Backend: ASP.NET Core Web API, C#, Entity Framework Core, Dapper, Swagger/OpenAPI
-- Runtime policy: .NET 10 SDK `10.0.201` as pinned by `src/server/global.json`
-- Frontend: Bun `1.3.10`, Next.js, React, TypeScript, Sass, USWDS 3.x
-- Database: SQL Server 2022-compatible SQL
-- Reporting: SQL views, Dapper reporting queries, filtered dashboards, accessible charts and tables, CSV export, print-to-PDF output
-- Local database: SQL Server 2022 in Docker Compose
-- Tests: xUnit or NUnit for backend tests
+- **Accessibility here is a legal and human requirement, not a coat of paint.** The design
+  system choice itself (USWDS 3.x plus a written Section 508 contract every page is held to)
+  bakes it in, and accessibility bugs are treated as defects with commits
+  ([ADR 0002](docs/adr/0002-uswds-accessibility-first.md)).
+- **The worst AI failure must be a wrong summary, not a wrong record.** The assistant can only
+  read and summarize through allowlisted tools over existing services, so a bad generation can
+  mislead a briefing but cannot mutate a case, and summaries cite the case data they grouped
+  ([ADR 0005](docs/adr/0005-ai-assistant-boundary.md)).
+- **A demo that dies without infrastructure helps nobody.** Every client data call goes through
+  one gateway that tries the API first and falls back to an embedded, typed dataset (the risk
+  queue even filters and paginates locally), so a reviewer sees the product in one command
+  ([ADR 0004](docs/adr/0004-client-offline-fallback.md)).
+- **Report numbers must be explainable row by row.** Reports are read-only analytics over a
+  normalized SQL model: named views and parameterized stored procedures reached through Dapper,
+  with EF Core handling transactional writes, so any figure in a report traces to SQL a
+  reviewer can open ([ADR 0001](docs/adr/0001-clean-architecture-hybrid.md),
+  [docs/REPORTING.md](docs/REPORTING.md)).
 
-Use latest LTS or stable production packages only. Do not use preview, alpha, beta, canary, release-candidate, or nightly packages unless a future change explicitly documents the reason.
+<details>
+<summary><b>For developers: quickstart</b></summary>
 
-## Repository Structure
-
-```text
-.
-|-- .github/
-|-- database/
-|   |-- schema/
-|   |-- seed/
-|   |-- views/
-|   `-- procedures/
-|-- docker/
-|   `-- mssql/
-|-- docs/
-|-- scripts/
-|-- src/
-|   |-- server/
-|   `-- client/
-`-- tests/
-```
-
-## Prerequisites
-
-- .NET 10 SDK `10.0.201`
-- Bun `1.3.10`
-- Docker Desktop
-- Git
-- Optional SQL tools: Azure Data Studio, SQL Server Management Studio, JetBrains DataGrip, Rider database tools, or WebStorm database tools
-
-## Windows Setup
-
-1. Install the .NET 10 SDK.
-2. Install Bun for Windows.
-3. Install Docker Desktop. Use the WSL2 backend when available.
-4. Optional: install SQL Server Developer, SQL Server Express, or LocalDB if you do not want to use Docker for local SQL Server.
-5. Start SQL Server:
-
-```powershell
-.\scripts\dev-up.ps1
-```
-
-Manual equivalent:
-
-```powershell
-docker compose up -d sqlserver
-docker compose ps
-```
-
-## macOS Setup
-
-1. Install the .NET 10 SDK.
-2. Install Bun `1.3.10`.
-3. Install Docker Desktop.
-4. Start SQL Server:
+The full path, including Windows and macOS notes, database bootstrap, the assistant key and
+troubleshooting, lives in [docs/SETUP.md](docs/SETUP.md). The essence:
 
 ```bash
-chmod +x scripts/*.sh
-./scripts/dev-up.sh
+git clone https://github.com/Alex5350/USWDS-VA-Demo.git
+cd USWDS-VA-Demo
+docker compose up -d sqlserver     # SQL Server 2022; then run the three setup scripts
+dotnet run --project src/server/VAOIG.FwaRiskTriage.Api
+cd src/client && bun install && bun run dev   # http://localhost:3000
 ```
 
-Manual equivalent:
+`bun run dev` alone renders the full portal from the embedded offline dataset; the commands
+above stand up the live SQL-backed path.
 
-```bash
-docker compose up -d sqlserver
-docker compose ps
-```
-
-On Apple Silicon Macs, SQL Server Docker containers may run through x86_64 emulation. This setup is intended for local demo development only and should not be described as a production-supported SQL Server-on-ARM deployment.
-
-## Environment
-
-Copy the placeholder environment file if you want local Docker Compose and shell sessions to use the same values:
-
-```bash
-cp .env.example .env
-```
-
-Do not commit `.env`.
-
-Default development connection string:
-
-```text
-Server=localhost,1433;Database=VAOIG_FWA_Demo;User Id=sa;Password=Your_strong_password123!;TrustServerCertificate=True;Encrypt=True;
-```
-
-## SQL Server Docker
-
-Start:
-
-```bash
-docker compose up -d sqlserver
-docker compose ps
-```
-
-Stop:
-
-```bash
-docker compose down
-```
-
-Reset the database volume:
-
-```bash
-docker compose down -v
-docker compose up -d sqlserver
-```
-
-The SQL Server image is `mcr.microsoft.com/mssql/server:2022-latest` and the container name is `vaoig-fwa-sqlserver`.
-
-The health check uses `/opt/mssql-tools18/bin/sqlcmd`. If a future image changes that path, treat the health check as best-effort and verify connectivity manually.
-
-## Database Setup
-
-Create the database:
-
-```bash
-docker exec -it vaoig-fwa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost \
-  -U sa \
-  -P "Your_strong_password123!" \
-  -C \
-  -i /docker-entrypoint-initdb.d/001-create-database.sql
-```
-
-Create schema, views, and procedures:
-
-```bash
-docker exec -it vaoig-fwa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost \
-  -U sa \
-  -P "Your_strong_password123!" \
-  -C \
-  -i /docker-entrypoint-initdb.d/002-create-schema.sql
-```
-
-Seed demo data:
-
-```bash
-docker exec -it vaoig-fwa-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost \
-  -U sa \
-  -P "Your_strong_password123!" \
-  -C \
-  -i /docker-entrypoint-initdb.d/003-seed-demo-data.sql
-```
-
-The official SQL Server Linux image does not automatically run `/docker-entrypoint-initdb.d` files. Run them manually or through a future bootstrap command.
-
-EF Core migration path:
-
-```bash
-cd src/server
-dotnet tool restore
-dotnet ef database update \
-  --project VAOIG.FwaRiskTriage.Infrastructure \
-  --startup-project VAOIG.FwaRiskTriage.Api
-```
-
-## Backend
-
-From `src/server`:
-
-```bash
-dotnet restore
-dotnet build
-dotnet test
-dotnet run --project VAOIG.FwaRiskTriage.Api
-```
-
-Expected local URLs:
-
-```text
-http://localhost:5000
-https://localhost:5001
-```
-
-The API reads the SQL Server connection string from:
-
-```text
-ConnectionStrings:DefaultConnection
-```
-
-## Frontend
-
-From `src/client`:
-
-```bash
-bun install
-bun run dev
-bun run lint
-bun run typecheck
-bun run build
-bun run start
-```
-
-The frontend should run at:
-
-```text
-http://localhost:3000
-```
-
-The frontend API base URL is:
-
-```text
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
-```
-
-Use Bun for frontend package management and scripts. Commit `src/client/bun.lock`. Do not commit `package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`.
-
-## AI Chat Assistant
-
-The case assistant is available at `/chat`. Saved sessions reopen at `/chat/{guid}`. It answers questions about synthetic case records, risk queue rows, provider risk, and case aging through read-only tools.
-
-The streaming route runs in Next.js and uses the Vercel AI SDK with the direct Google Gemini provider. Set the Google key only for the Next server process; it must not use a `NEXT_PUBLIC_` prefix or be exposed to browser code.
-
-```text
-GOOGLE_GENERATIVE_AI_API_KEY=
-GOOGLE_GENERATIVE_AI_MODEL=gemini-3.1-flash-lite-preview
-```
-
-`GOOGLE_GENERATIVE_AI_MODEL` is optional unless you want to override the code default.
-
-Local run flow:
-
-1. Start SQL Server and apply the database schema or EF migrations.
-2. Start the .NET API from `src/server` with `dotnet run --project VAOIG.FwaRiskTriage.Api`.
-3. Start the frontend from `src/client` with `bun run dev`, making the Google variables available to that process. `src/client/.env.local` is ignored by git if you prefer a frontend-local env file.
-4. Open `http://localhost:3000/chat` and select a demo user role with risk queue access.
-
-The assistant uses synthetic data only. It does not determine fraud, does not write case records, does not run arbitrary SQL, and does not implement real web search in v1. The web-search checkbox records the request context but the assistant will answer from the conversation and allowlisted case tools only.
-
-## Mock Authentication
-
-The demo uses lightweight mock authentication only. It is not production identity management.
-
-Preferred backend behavior:
-
-- Authentication scheme: `DemoAuth`
-- Request header: `X-Demo-User`
-- Default user when no header is present: `demo.readonly@local`
-- Demo roles: `ReadOnly`, `Analyst`, `Investigator`, `Supervisor`, `Administrator`
-
-Preferred frontend behavior:
-
-- Header role selector
-- Session storage for the selected demo user
-- `X-Demo-User` sent with API requests
-- Visible notice that authentication is mocked
-
-Analyst, Investigator, Supervisor, and Administrator can create manual synthetic case records, edit case status and claim fields from a separate edit page, escalate or de-escalate cases with required justification, and delete cases into a restore-capable recycle bin. Escalation and de-escalation justifications are persisted as case notes and audit events. Analysts and Investigators see and restore their own deleted records; Supervisors and Administrators can review the broader deleted-record queue. Deleted cases are hidden from the active queue until restored. Administrators can assign effective demo permissions to fake users and review audit events for case creation, updates, deletion, restoration, escalation, de-escalation, and permission updates.
-
-Investigators, Supervisors, and Administrators can add, update, or disable synthetic providers. Supervisors and Administrators can maintain procedure-code meanings and default amounts. Manual intake uses searchable provider, state/territory, and procedure-code controls instead of free-text provider and code fields.
-
-Real VA SSO, Login.gov, PIV/CAC, Entra ID, password login, and production user provisioning are out of scope.
+</details>
 
 ## Reporting
 
-The reporting layer is SQL-backed. Dapper queries read reporting views and stored procedures for executive metrics, provider risk summaries, case aging, questioned cost trend data, filtered report workspaces, and CSV exports.
-
-Included report pages:
+The reporting layer is SQL-backed. Dapper queries read reporting views and stored procedures
+for executive metrics, provider risk summaries, case aging, questioned cost trend data,
+filtered report workspaces, and CSV exports:
 
 - `/reports`: reporting command center with cross-report filters and export controls
-- `/reports/provider-risk`: provider concentration, questioned cost, and average risk score analysis
-- `/reports/questioned-cost`: monthly paid amount and estimated questioned cost trend analysis
+- `/reports/provider-risk`: provider concentration, questioned cost, and average risk score
+- `/reports/questioned-cost`: monthly paid amount and estimated questioned cost trends
 - `/reports/case-aging`: workflow status and case aging bucket analysis
 
-Report filters support date range, case status, provider, provider type, state or territory, and provider search. CSV exports and print-to-PDF output use the active filter set.
-
-Included SQL assets:
-
-- `database/views/vw_DashboardSummary.sql`
-- `database/views/vw_ProviderRiskSummary.sql`
-- `database/views/vw_CaseAging.sql`
-- `database/views/vw_QuestionedCostByMonth.sql`
-- `database/procedures/sp_GetRiskQueue.sql`
-- `database/procedures/sp_GetProviderRiskReport.sql`
+Report filters cover date range, case status, provider, provider type, state or territory, and
+provider search. CSV exports and print-to-PDF output use the active filter set. The SQL assets
+live under `database/views` and `database/procedures`; full detail in
+[docs/REPORTING.md](docs/REPORTING.md).
 
 ## Accessibility
 
-The frontend should follow USWDS patterns and Section 508 expectations:
-
-- Skip-to-main-content link
-- Semantic landmarks
-- Labeled forms
-- Accessible tables with captions and scoped headers
-- Visible focus states
-- WCAG AA color contrast
-- Text summaries and table alternatives for charts
-- Keyboard-accessible controls
-
-See [docs/ACCESSIBILITY-508.md](docs/ACCESSIBILITY-508.md).
+The frontend follows USWDS patterns and Section 508 expectations: skip link, semantic
+landmarks, labeled forms, accessible tables with captions and scoped headers, visible focus,
+WCAG AA contrast, text and table alternatives for charts, and keyboard-complete controls. The
+checklist and its verification steps double as the manual QA script:
+[docs/ACCESSIBILITY-508.md](docs/ACCESSIBILITY-508.md).
 
 ## Security
 
-This is a demo, but it should show good habits:
+This is a demo, but it shows good habits: no secrets in source control (`.env.example` only),
+mock auth clearly labeled, CORS restricted to the local frontend origin, EF Core LINQ for
+transactional data, Dapper with parameterized SQL for reports, no dynamic SQL concatenation
+for user-controlled values, and no real data. See [SECURITY.md](SECURITY.md) and
+[docs/SECURITY.md](docs/SECURITY.md).
 
-- No secrets in source control
-- `.env.example` only
-- Mock auth clearly labeled
-- CORS restricted to local frontend origin
-- EF Core LINQ for transactional data
-- Dapper with parameterized SQL for reports
-- No dynamic SQL concatenation for user-controlled values
-- No real data
+## Documentation
 
-See [SECURITY.md](SECURITY.md) and [docs/SECURITY.md](docs/SECURITY.md).
-
-## Interview Demo
-
-Use [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) to walk through:
-
-1. Business case
-2. Architecture
-3. SQL Server Docker setup
-4. Mock authentication
-5. Dashboard
-6. Risk queue
-7. Case detail
-8. Explainable rules
-9. Reporting
-10. Accessibility and security choices
-
-## Troubleshooting
-
-If SQL Server is not healthy:
-
-- Check `docker compose logs -f sqlserver`.
-- Confirm port `1433` is not already in use.
-- Confirm the SA password meets SQL Server complexity requirements.
-- On Apple Silicon, allow time for x86_64 emulation startup.
-- If `/opt/mssql-tools18/bin/sqlcmd` is unavailable in the image, connect from a host SQL tool or adjust the health check.
-
-If the frontend cannot call the API:
-
-- Confirm the API is running on `http://localhost:5000`.
-- Confirm `NEXT_PUBLIC_API_BASE_URL=http://localhost:5000`.
-- Confirm CORS allows `http://localhost:3000`.
+| Document | What it covers | Audience |
+|---|---|---|
+| [TECHNICAL.md](TECHNICAL.md) | Architecture, request flow, decisions mapped to business problems, stack rationale, testing | Engineers |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md) | VA and engineering terms, plain English first, precisely second | Everyone |
+| [docs/SETUP.md](docs/SETUP.md) | Full local setup: prerequisites, SQL Server in Docker, database, backend, frontend, assistant key | Developers |
+| [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md) | Guided walkthrough that opens with the business case | Everyone |
+| [docs/SPECIFICATION.md](docs/SPECIFICATION.md) | Scope, careful-language rules, runtime policy | Everyone |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, routes, chat plumbing, data layer | Engineers |
+| [docs/adr/](docs/adr/) | Five decision records with context and consequences | Engineers |
+| [docs/REPORTING.md](docs/REPORTING.md) | Reporting views, procedures, filters, exports | Engineers |
+| [docs/ACCESSIBILITY-508.md](docs/ACCESSIBILITY-508.md) | The Section 508 contract and verification steps | Engineers |
+| [docs/SECURITY.md](docs/SECURITY.md) | Mock auth, role matrix, authorization policies, overrides, audit | Engineers |
+| [SECURITY.md](SECURITY.md) | Security scope and how to report a vulnerability | Everyone |
+| [docs/API-ENDPOINTS.md](docs/API-ENDPOINTS.md) | Endpoint catalog with policies and DTO shapes | Engineers |
+| [docs/DATA-DICTIONARY.md](docs/DATA-DICTIONARY.md) | The synthetic schema, table by table | Engineers |
+| [docs/PROCESS-AND-CHALLENGES.md](docs/PROCESS-AND-CHALLENGES.md) | Build narrative: the accessibility fixes that only showed up at runtime | Engineers |
+| [docs/CASE-ASSISTANT-QUESTIONS.md](docs/CASE-ASSISTANT-QUESTIONS.md) | Demo prompts for the case assistant | Everyone |
+| [docs/OPEN-SOURCE-NOTES.md](docs/OPEN-SOURCE-NOTES.md) | Public-posture rules: what may never enter this repo | Everyone |
 
 ## License
 
